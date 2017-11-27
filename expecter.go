@@ -66,22 +66,16 @@ func (h *Expecter) Model(model interface{}) *Expecter {
 
 // Create mocks insertion of a model into the DB
 func (h *Expecter) Create(model interface{}) ExpectedExec {
-	h.gorm.Create(model)
+	h.gorm = h.gorm.Create(model)
 	return h.adapter.ExpectExec(h.recorder.stmts[0])
 }
 
 /* READ */
 
-// First triggers a Query
-func (h *Expecter) First(out interface{}, where ...interface{}) ExpectedQuery {
-	h.gorm.First(out, where...)
-	return h.adapter.ExpectQuery(h.recorder.stmts...)
-}
-
-// Find triggers a Query
-func (h *Expecter) Find(out interface{}, where ...interface{}) ExpectedQuery {
-	h.gorm.Find(out, where...)
-	return h.adapter.ExpectQuery(h.recorder.stmts...)
+// Where sets a condition
+func (h *Expecter) Where(query interface{}, args ...interface{}) *Expecter {
+	h.gorm = h.gorm.Where(query, args...)
+	return h
 }
 
 // Preload clones the expecter and sets a preload condition on gorm.DB
@@ -89,6 +83,18 @@ func (h *Expecter) Preload(column string, conditions ...interface{}) *Expecter {
 	h.gorm = h.gorm.Preload(column, conditions...)
 
 	return h
+}
+
+// First triggers a Query
+func (h *Expecter) First(out interface{}, where ...interface{}) ExpectedQuery {
+	h.gorm = h.gorm.First(out, where...)
+	return h.adapter.ExpectQuery(h.recorder.stmts...)
+}
+
+// Find triggers a Query
+func (h *Expecter) Find(out interface{}, where ...interface{}) ExpectedQuery {
+	h.gorm = h.gorm.Find(out, where...)
+	return h.adapter.ExpectQuery(h.recorder.stmts...)
 }
 
 /* UPDATE */
