@@ -9,25 +9,21 @@ import (
 
 	expecter "github.com/iantanwx/gorm-expect"
 	"github.com/jinzhu/gorm"
+	"github.com/stretchr/testify/assert"
 )
 
 type User struct {
-	Id                int64
-	Age               int64
-	Name              string `sql:"size:255"`
-	Email             string
-	Birthday          *time.Time // Time
-	CreatedAt         time.Time  // CreatedAt: Time of record is created, will be insert automatically
-	UpdatedAt         time.Time  // UpdatedAt: Time of record is updated, will be updated automatically
-	Emails            []Email    // Embedded structs
-	CreditCard        CreditCard
-	Latitude          float64
-	Languages         []Language `gorm:"many2many:user_languages;"`
-	PasswordHash      []byte
-	IgnoreMe          int64                 `sql:"-"`
-	IgnoreStringSlice []string              `sql:"-"`
-	Ignored           struct{ Name string } `sql:"-"`
-	IgnoredPointer    *User                 `sql:"-"`
+	Id           int64
+	Age          int64
+	Name         string `sql:"size:255"`
+	Email        string
+	Birthday     *time.Time // Time
+	CreatedAt    time.Time  // CreatedAt: Time of record is created, will be insert automatically
+	UpdatedAt    time.Time  // UpdatedAt: Time of record is updated, will be updated automatically
+	Emails       []Email    // Embedded structs
+	CreditCard   CreditCard
+	Languages    []Language `gorm:"many2many:user_languages;"`
+	PasswordHash []byte
 }
 
 type CreditCard struct {
@@ -51,6 +47,23 @@ type Language struct {
 	gorm.Model
 	Name  string
 	Users []User `gorm:"many2many:user_languages;"`
+}
+
+type UserRepository struct {
+	db *gorm.DB
+}
+
+func (r *UserRepository) Find(limit int, offset int) ([]User, error) {
+	var users []User
+	err := r.db.Limit(limit).Offset(offset).Find(&users).Error
+
+	return users, err
+}
+
+func (r *UserRepository) FindByID(id int64) (User, error) {
+	user := User{Id: id}
+	err := r.db.Preload("Emails").Preload("CreditCard").Preload("Languages").Find(&user).Error
+	return user, err
 }
 
 func TestNewDefaultExpecter(t *testing.T) {
@@ -116,6 +129,26 @@ func TestQueryReturn(t *testing.T) {
 	if ne := reflect.DeepEqual(in, out); !ne {
 		t.Errorf("Not equal")
 	}
+}
+
+func TestQueryReturnInline(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer func() {
+		db.Close()
+	}()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	in := User{}
+	out := User{Id: 1, Name: "some_guy"}
+
+	expect.Find(&in, "name = ?", "some_guy").Returns(out)
+	db.Find(&in, "name = ?", "some_guy")
+
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, in, out)
 }
 
 func TestFindStructDest(t *testing.T) {
@@ -320,7 +353,53 @@ func TestMockSaveBasic(t *testing.T) {
 	}
 }
 
-func TestMockUpdateBasic(t *testing.T) {
+// func TestMockUpdateBasic(t *testing.T) {
+// 	db, expect, err := expecter.NewDefaultExpecter()
+// 	defer db.Close()
+
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+
+// 	newName := "uhznij"
+// 	user := User{Name: "jinzhu"}
+
+// 	expect.Model(&user).Update("name", newName).WillSucceed(1, 1)
+// 	db.Model(&user).Update("name", newName)
+
+// 	if err := expect.AssertExpectations(); err != nil {
+// 		t.Errorf("Expectations were not met %s", err.Error())
+// 	}
+
+// 	if user.Name != newName {
+// 		t.Errorf("Should have name %s but got %s", newName, user.Name)
+// 	}
+// }
+
+// func TestMockUpdatesBasic(t *testing.T) {
+// 	db, expect, err := expecter.NewDefaultExpecter()
+// 	defer db.Close()
+
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+
+// 	user := User{Name: "jinzhu", Age: 18}
+// 	updated := User{Name: "jinzhu", Age: 88}
+
+// 	expect.Model(&user).Updates(updated).WillSucceed(1, 1)
+// 	db.Model(&user).Updates(updated)
+
+// 	if err := expect.AssertExpectations(); err != nil {
+// 		t.Errorf("Expectations were not met %s", err.Error())
+// 	}
+
+// 	if user.Age != updated.Age {
+// 		t.Errorf("Should have age %d but got %d", user.Age, updated.Age)
+// 	}
+// }
+
+func TestUserRepoFind(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -328,22 +407,18 @@ func TestMockUpdateBasic(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	newName := "uhznij"
-	user := User{Name: "jinzhu"}
+	repo := &UserRepository{db}
 
-	expect.Model(&user).Update("name", newName).WillSucceed(1, 1)
-	db.Model(&user).Update("name", newName)
+	expected := []User{User{Name: "my_name"}}
 
-	if err := expect.AssertExpectations(); err != nil {
-		t.Errorf("Expectations were not met %s", err.Error())
-	}
+	expect.Find(&[]User{}).Returns(expected)
+	users, err := repo.Find(1, 0)
 
-	if user.Name != newName {
-		t.Errorf("Should have name %s but got %s", newName, user.Name)
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, expected, users)
 }
 
-func TestMockUpdatesBasic(t *testing.T) {
+func TestUserRepoPreload(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -351,17 +426,33 @@ func TestMockUpdatesBasic(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	user := User{Name: "jinzhu", Age: 18}
-	updated := User{Name: "jinzhu", Age: 88}
+	repo := &UserRepository{db}
 
-	expect.Model(&user).Updates(updated).WillSucceed(1, 1)
-	db.Model(&user).Updates(updated)
-
-	if err := expect.AssertExpectations(); err != nil {
-		t.Errorf("Expectations were not met %s", err.Error())
+	// has one
+	creditCard := CreditCard{Number: "12345678"}
+	// has many
+	email := []Email{
+		Email{Email: "fake_user@live.com"},
+		Email{Email: "fake_user@gmail.com"},
+	}
+	// many to many
+	languages := []Language{
+		Language{Name: "EN"},
+		Language{Name: "ZH"},
 	}
 
-	if user.Age != updated.Age {
-		t.Errorf("Should have age %d but got %d", user.Age, updated.Age)
+	expected := User{
+		Id:         1,
+		Name:       "my_name",
+		CreditCard: creditCard,
+		Emails:     email,
+		Languages:  languages,
 	}
+
+	expect.Preload("Emails").Preload("CreditCard").Preload("Languages").Find(&User{Id: 1}).Returns(expected)
+	actual, err := repo.FindByID(1)
+
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
 }
