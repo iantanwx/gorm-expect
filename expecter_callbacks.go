@@ -76,7 +76,6 @@ func recordQueryCallback(scope *gorm.Scope) {
 	}
 
 	if len(recorder.preload) > 0 {
-		// this will cause the scope.SQL to mutate to the preload query
 		stmt.preload = recorder.preload[0].schema
 
 		// we just want to pop the first element off
@@ -88,7 +87,6 @@ func recordQueryCallback(scope *gorm.Scope) {
 
 func recordPreloadCallback(scope *gorm.Scope) {
 	// this callback runs _before_ gorm:preload
-	// it should record the next thing to be preloaded
 	recorder, ok := scope.Get("gorm:recorder")
 
 	if !ok {

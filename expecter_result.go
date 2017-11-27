@@ -209,7 +209,6 @@ func (q *SqlmockQuery) Returns(out interface{}) ExpectedQuery {
 	q.scope = scope
 	outVal := indirect(reflect.ValueOf(out))
 
-	// rows := q.getRowsForOutType(out)
 	destQuery := q.queries[0]
 	subQueries := q.queries[1:]
 

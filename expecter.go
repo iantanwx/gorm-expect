@@ -29,11 +29,11 @@ func NewDefaultExpecter() (*gorm.DB, *Expecter, error) {
 	gormNoop, _ := gorm.Open("sqlmock", noop)
 	gormNoop = gormNoop.Set("gorm:recorder", recorder)
 
-	gormNoop.Callback().Create().After("gorm:create").Register("gorm:record_exec", recordExecCallback)
-	gormNoop.Callback().Query().Before("gorm:preload").Register("gorm:record_preload", recordPreloadCallback)
-	gormNoop.Callback().Query().After("gorm:query").Register("gorm:record_query", recordQueryCallback)
-	gormNoop.Callback().RowQuery().After("gorm:row_query").Register("gorm:record_query", recordQueryCallback)
-	gormNoop.Callback().Update().After("gorm:update").Register("gorm:record_exec", recordExecCallback)
+	gormNoop.Callback().Create().After("gorm:create").Register("gorm_expect:record_exec", recordExecCallback)
+	gormNoop.Callback().Query().Before("gorm:preload").Register("gorm_expect:record_preload", recordPreloadCallback)
+	gormNoop.Callback().Query().After("gorm:query").Register("gorm_expect:record_query", recordQueryCallback)
+	gormNoop.Callback().RowQuery().After("gorm:row_query").Register("gorm_expect:record_query", recordQueryCallback)
+	gormNoop.Callback().Update().After("gorm:update").Register("gorm_expect:record_exec", recordExecCallback)
 
 	return gormMock, &Expecter{adapter: adapter, gorm: gormNoop, recorder: recorder}, nil
 }
@@ -86,10 +86,9 @@ func (h *Expecter) Find(out interface{}, where ...interface{}) ExpectedQuery {
 
 // Preload clones the expecter and sets a preload condition on gorm.DB
 func (h *Expecter) Preload(column string, conditions ...interface{}) *Expecter {
-	clone := h.clone()
-	clone.gorm = clone.gorm.Preload(column, conditions...)
+	h.gorm = h.gorm.Preload(column, conditions...)
 
-	return clone
+	return h
 }
 
 /* UPDATE */
@@ -110,14 +109,4 @@ func (h *Expecter) Update(attrs ...interface{}) ExpectedExec {
 func (h *Expecter) Updates(values interface{}, ignoreProtectedAttrs ...bool) ExpectedExec {
 	h.gorm.Updates(values, ignoreProtectedAttrs...)
 	return h.adapter.ExpectExec(h.recorder.stmts[0])
-}
-
-/* PRIVATE METHODS */
-
-func (h *Expecter) clone() *Expecter {
-	return &Expecter{
-		adapter:  h.adapter,
-		gorm:     h.gorm,
-		recorder: h.recorder,
-	}
 }
