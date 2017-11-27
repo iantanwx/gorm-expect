@@ -415,6 +415,7 @@ func TestUserRepoFind(t *testing.T) {
 	users, err := repo.Find(1, 0)
 
 	assert.Nil(t, err)
+	assert.Nil(t, expect.AssertExpectations())
 	assert.Equal(t, expected, users)
 }
 
