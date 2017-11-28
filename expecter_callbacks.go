@@ -2,6 +2,7 @@ package gormexpect
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/jinzhu/gorm"
 )
@@ -14,19 +15,18 @@ type Recorder struct {
 
 // Record records a Stmt for use when SQL is finally executed
 func (r *Recorder) Record(stmt Stmt) {
+	stmt.sql = regexp.QuoteMeta(stmt.sql)
 	r.stmts = append(r.stmts, stmt)
 }
 
 // GetFirst returns the first recorded sql statement logged. If there are no
 // statements, false is returned
 func (r *Recorder) GetFirst() (Stmt, bool) {
-	var stmt Stmt
 	if len(r.stmts) > 0 {
-		stmt = r.stmts[0]
-		return stmt, true
+		return r.stmts[0], true
 	}
 
-	return stmt, false
+	return Stmt{}, false
 }
 
 // IsEmpty returns true if the statements slice is empty
@@ -58,6 +58,15 @@ func recordExecCallback(scope *gorm.Scope) {
 	recorder := r.(*Recorder)
 
 	recorder.Record(stmt)
+}
+
+func populateScopeValueCallback(scope *gorm.Scope) {
+	// we need to see if we have a valid outval
+	returnValue, ok := scope.Get("gorm_expect:ret")
+
+	if ok {
+		scope.Value = returnValue
+	}
 }
 
 func recordQueryCallback(scope *gorm.Scope) {

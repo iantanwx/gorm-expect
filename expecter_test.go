@@ -66,6 +66,12 @@ func (r *UserRepository) FindByID(id int64) (User, error) {
 	return user, err
 }
 
+func (r *UserRepository) FindUser(statement string, vars ...interface{}) (User, error) {
+	var user User
+	err := r.db.Preload("Emails").Preload("CreditCard").Where(statement, vars...).Find(&user).Error
+	return user, err
+}
+
 func TestNewDefaultExpecter(t *testing.T) {
 	db, _, err := expecter.NewDefaultExpecter()
 	//lint:ignore SA5001 just a mock
@@ -209,13 +215,8 @@ func TestMockPreloadHasMany(t *testing.T) {
 	expect.Preload("Emails").Find(&in).Returns(out)
 	db.Preload("Emails").Find(&in)
 
-	if err := expect.AssertExpectations(); err != nil {
-		t.Error(err)
-	}
-
-	if !reflect.DeepEqual(in, out) {
-		t.Error("In and out are not equal")
-	}
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, out, in)
 }
 
 func TestMockPreloadHasOne(t *testing.T) {
@@ -301,7 +302,7 @@ func TestMockCreateBasic(t *testing.T) {
 
 	user := User{Name: "jinzhu"}
 	expect.Create(&user).WillSucceed(1, 1)
-	rowsAffected := db.Create(&user).RowsAffected
+	rowsAffected := db.LogMode(true).Create(&user).RowsAffected
 
 	if rowsAffected != 1 {
 		t.Errorf("Expected rows affected to be 1 but got %d", rowsAffected)
@@ -419,7 +420,7 @@ func TestUserRepoFind(t *testing.T) {
 	assert.Equal(t, expected, users)
 }
 
-func TestUserRepoPreload(t *testing.T) {
+func TestUserRepoPreload1(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -452,6 +453,39 @@ func TestUserRepoPreload(t *testing.T) {
 
 	expect.Preload("Emails").Preload("CreditCard").Preload("Languages").Find(&User{Id: 1}).Returns(expected)
 	actual, err := repo.FindByID(1)
+
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+func TestUserRepoPreload2(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	repo := &UserRepository{db}
+
+	// has one
+	creditCard := CreditCard{Number: "12345678"}
+	// has many
+	email := []Email{
+		Email{Email: "fake_user@live.com"},
+		Email{Email: "fake_user@gmail.com"},
+	}
+
+	expected := User{
+		Id:         1,
+		Name:       "my_name",
+		CreditCard: creditCard,
+		Emails:     email,
+	}
+
+	expect.Preload("Emails").Preload("CreditCard").Where("id = ?", 1).Find(&User{}).Returns(expected)
+	actual, err := repo.FindUser("id = ?", 1)
 
 	assert.Nil(t, expect.AssertExpectations())
 	assert.Nil(t, err)
