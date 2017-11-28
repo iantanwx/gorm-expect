@@ -1,6 +1,7 @@
 package gormexpect
 
 import (
+	"database/sql/driver"
 	"reflect"
 	"unsafe"
 
@@ -24,6 +25,8 @@ type Preload struct {
 	conditions []interface{}
 }
 
+// getPreload copies preload from scope.Search, because it is a private field
+// and therefore inaccessible to this package by normal methods
 func getPreload(scope *gorm.Scope) []Preload {
 	var preload []Preload
 	searchVal := indirect(reflect.ValueOf(scope.Search))
@@ -45,4 +48,41 @@ func getPreload(scope *gorm.Scope) []Preload {
 	}
 
 	return preload
+}
+
+// getRowForFields accepts a gorm.Field and converts them to []driver.Value so
+// that they can then be turned into sql.Rows
+func getRowForFields(fields []*gorm.Field) []driver.Value {
+	var values []driver.Value
+	for _, field := range fields {
+		if field.IsNormal {
+			value := field.Field
+
+			// dereference pointers
+			if field.Field.Kind() == reflect.Ptr {
+				value = reflect.Indirect(field.Field)
+			}
+
+			// check if we have a zero Value
+			// just append nil if it's not valid, so sqlmock won't complain
+			if !value.IsValid() {
+				values = append(values, nil)
+				continue
+			}
+
+			concreteVal := value.Interface()
+
+			if driver.IsValue(concreteVal) {
+				values = append(values, concreteVal)
+			} else if num, err := driver.DefaultParameterConverter.ConvertValue(concreteVal); err == nil {
+				values = append(values, num)
+			} else if valuer, ok := concreteVal.(driver.Valuer); ok {
+				if convertedValue, err := valuer.Value(); err == nil {
+					values = append(values, convertedValue)
+				}
+			}
+		}
+	}
+
+	return values
 }

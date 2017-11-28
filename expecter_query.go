@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/jinzhu/gorm"
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
-// QueryExpectation represents an expected query that will be executed and can
-// return some rows. It presents a fluent API for chaining calls to other
-// expectations
+// QueryExpectation is returned by Expecter. It exposes a narrower API than
+// Queryer to limit footguns.
 type QueryExpectation interface {
 	Returns(value interface{}) QueryExpectation
 	// Error(err error) QueryExpectation
@@ -34,8 +32,6 @@ func (q *SqlmockQueryExpectation) Returns(out interface{}) QueryExpectation {
 	q.callMethods()
 
 	outVal := indirect(reflect.ValueOf(out))
-
-	spew.Dump(q.parent.recorder.stmts)
 
 	destQuery := q.parent.recorder.stmts[0]
 	subQueries := q.parent.recorder.stmts[1:]
@@ -68,7 +64,6 @@ func (q *SqlmockQueryExpectation) getRelationRows(rVal reflect.Value, fieldName 
 
 	// we need to check for zero values
 	if reflect.DeepEqual(rVal.Interface(), reflect.New(rVal.Type()).Elem().Interface()) {
-		// spew.Printf("FOUND EMPTY INTERFACE FOR %s\r\n", fieldName)
 		return nil, false
 	}
 
@@ -193,13 +188,18 @@ func (q *SqlmockQueryExpectation) getDestRows(out interface{}) *sqlmock.Rows {
 	return rows
 }
 
+// callMethods is used to call deferred db.* methods. It is necessary to
+// ensure scope.Value has a primary key, extracted from the model passed to
+// SqlmockQueryExpectation.Returns. This is because the noop database does not
+// return any actual rows.
 func (q *SqlmockQueryExpectation) callMethods() {
 	q.parent.gorm = q.parent.gorm.Set("gorm_expect:ret", q.scope.Value)
 	q.parent.gorm.Callback().Query().Before("gorm:preload").Register("gorm_expect:populate_scope_val", populateScopeValueCallback)
+
 	noop := reflect.ValueOf(q.parent.gorm)
 	for methodName, args := range q.parent.callmap {
 		methodVal := noop.MethodByName(methodName)
-		spew.Dump(methodVal)
+
 		switch method := methodVal.Interface().(type) {
 		case func(interface{}, ...interface{}) *gorm.DB:
 			method(args[0], args[1:]...)

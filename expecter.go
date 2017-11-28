@@ -71,7 +71,7 @@ func (h *Expecter) Model(model interface{}) *Expecter {
 /* CREATE */
 
 // Create mocks insertion of a model into the DB
-func (h *Expecter) Create(model interface{}) ExpectedExec {
+func (h *Expecter) Create(model interface{}) Execer {
 	h.gorm = h.gorm.Create(model)
 	return h.adapter.ExpectExec(h.recorder.stmts[0])
 }
@@ -115,25 +115,29 @@ func (h *Expecter) Find(out interface{}, where ...interface{}) QueryExpectation 
 /* UPDATE */
 
 // Save mocks updating a record in the DB and will trigger db.Exec()
-func (h *Expecter) Save(model interface{}) ExpectedExec {
+func (h *Expecter) Save(model interface{}) ExecExpectation {
 	h.gorm.Save(model)
-	return h.adapter.ExpectExec(h.recorder.stmts[0])
+	return h.exec()
 }
 
 // Update mocks updating the given attributes in the DB
-func (h *Expecter) Update(attrs ...interface{}) ExpectedExec {
+func (h *Expecter) Update(attrs ...interface{}) ExecExpectation {
 	h.gorm.Update(attrs...)
-	return h.adapter.ExpectExec(h.recorder.stmts[0])
+	return h.exec()
 }
 
 // Updates does the same thing as Update, but with map or struct
-func (h *Expecter) Updates(values interface{}, ignoreProtectedAttrs ...bool) ExpectedExec {
+func (h *Expecter) Updates(values interface{}, ignoreProtectedAttrs ...bool) ExecExpectation {
 	h.gorm.Updates(values, ignoreProtectedAttrs...)
-	return h.adapter.ExpectExec(h.recorder.stmts[0])
+	return h.exec()
 }
 
 // query returns a SqlmockQuery with the current DB state
 // it is responsible for executing SQL against then noop DB
 func (h *Expecter) query() QueryExpectation {
 	return &SqlmockQueryExpectation{parent: h}
+}
+
+func (h *Expecter) exec() ExecExpectation {
+	return &SqlmockExecExpectation{parent: h}
 }

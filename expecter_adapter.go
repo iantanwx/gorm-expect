@@ -27,7 +27,7 @@ func init() {
 // implementations (e.g. go-sqlmock or go-testdb)
 type Adapter interface {
 	ExpectQuery(stmt Stmt) Queryer
-	ExpectExec(stmt Stmt) ExpectedExec
+	ExpectExec(stmt Stmt) Execer
 	AssertExpectations() error
 }
 
@@ -59,8 +59,16 @@ func (a *SqlmockAdapter) ExpectQuery(query Stmt) Queryer {
 
 // ExpectExec wraps the underlying mock method for setting a exec
 // expectation
-func (a *SqlmockAdapter) ExpectExec(exec Stmt) ExpectedExec {
-	return &SqlmockExec{mock: a.mocker, exec: exec}
+func (a *SqlmockAdapter) ExpectExec(exec Stmt) Execer {
+	expectation := a.mocker.ExpectExec(exec.sql)
+	return &SqlmockExecer{exec: expectation}
+}
+
+// AssertExpectations asserts that _all_ expectations for a test have been met
+// and returns an error specifying which have not if there are unmet
+// expectations
+func (a *SqlmockAdapter) AssertExpectations() error {
+	return a.mocker.ExpectationsWereMet()
 }
 
 // Queryer is returned from ExpectQuery
@@ -101,9 +109,38 @@ func (r *SqlmockQueryer) Args(args ...driver.Value) Queryer {
 	return &SqlmockQueryer{query: expectation}
 }
 
-// AssertExpectations asserts that _all_ expectations for a test have been met
-// and returns an error specifying which have not if there are unmet
-// expectations
-func (a *SqlmockAdapter) AssertExpectations() error {
-	return a.mocker.ExpectationsWereMet()
+// Execer is a high-level interface to the underlying mock db
+type Execer interface {
+	WillSucceed(lastInsertID, rowsAffected int64) Execer
+	WillFail(err error) Execer
+	Args(args ...driver.Value) Execer
+}
+
+// SqlmockExecer implements Execer with gosqlmock
+type SqlmockExecer struct {
+	exec *sqlmock.ExpectedExec
+}
+
+// WillSucceed accepts a two int64s. They are passed directly to the underlying
+// mock db. Useful for checking DAO behaviour in the event that the incorrect
+// number of rows are affected by an Exec
+func (e *SqlmockExecer) WillSucceed(lastReturnedID, rowsAffected int64) Execer {
+	result := sqlmock.NewResult(lastReturnedID, rowsAffected)
+	expectation := e.exec.WillReturnResult(result)
+
+	return &SqlmockExecer{exec: expectation}
+}
+
+// WillFail simulates returning an Error from an unsuccessful exec
+func (e *SqlmockExecer) WillFail(err error) Execer {
+	result := sqlmock.NewErrorResult(err)
+	expectation := e.exec.WillReturnResult(result)
+
+	return &SqlmockExecer{exec: expectation}
+}
+
+// Args sets the args that the statement should be executed with
+func (e *SqlmockExecer) Args(args ...driver.Value) Execer {
+	expectation := e.exec.WithArgs(args...)
+	return &SqlmockExecer{exec: expectation}
 }
