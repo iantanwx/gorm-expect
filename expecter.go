@@ -12,6 +12,7 @@ type AdapterFactory func(dialect string, args ...interface{}) (*gorm.DB, Adapter
 type Expecter struct {
 	// globally scoped expecter
 	adapter  Adapter
+	callmap  map[string][]interface{} // these get called after we get a value from `Returns`
 	gorm     *gorm.DB
 	recorder *Recorder
 }
@@ -35,7 +36,12 @@ func NewDefaultExpecter() (*gorm.DB, *Expecter, error) {
 	gormNoop.Callback().RowQuery().After("gorm:row_query").Register("gorm_expect:record_query", recordQueryCallback)
 	gormNoop.Callback().Update().After("gorm:update").Register("gorm_expect:record_exec", recordExecCallback)
 
-	return gormMock, &Expecter{adapter: adapter, gorm: gormNoop, recorder: recorder}, nil
+	return gormMock, &Expecter{
+		adapter:  adapter,
+		callmap:  make(map[string][]interface{}),
+		gorm:     gormNoop,
+		recorder: recorder,
+	}, nil
 }
 
 // NewExpecter returns an Expecter for arbitrary adapters
@@ -86,15 +92,24 @@ func (h *Expecter) Preload(column string, conditions ...interface{}) *Expecter {
 }
 
 // First triggers a Query
-func (h *Expecter) First(out interface{}, where ...interface{}) ExpectedQuery {
-	h.gorm = h.gorm.First(out, where...)
-	return h.adapter.ExpectQuery(h.recorder.stmts...)
+func (h *Expecter) First(out interface{}, where ...interface{}) QueryExpectation {
+	var args []interface{}
+	args = append(args, out)
+	args = append(args, where...)
+	h.callmap["First"] = args
+
+	return h.query()
 }
 
 // Find triggers a Query
-func (h *Expecter) Find(out interface{}, where ...interface{}) ExpectedQuery {
-	h.gorm = h.gorm.Find(out, where...)
-	return h.adapter.ExpectQuery(h.recorder.stmts...)
+func (h *Expecter) Find(out interface{}, where ...interface{}) QueryExpectation {
+	// store our call in the map
+	var args []interface{}
+	args = append(args, out)
+	args = append(args, where...)
+	h.callmap["Find"] = args
+
+	return h.query()
 }
 
 /* UPDATE */
@@ -115,4 +130,10 @@ func (h *Expecter) Update(attrs ...interface{}) ExpectedExec {
 func (h *Expecter) Updates(values interface{}, ignoreProtectedAttrs ...bool) ExpectedExec {
 	h.gorm.Updates(values, ignoreProtectedAttrs...)
 	return h.adapter.ExpectExec(h.recorder.stmts[0])
+}
+
+// query returns a SqlmockQuery with the current DB state
+// it is responsible for executing SQL against then noop DB
+func (h *Expecter) query() QueryExpectation {
+	return &SqlmockQueryExpectation{parent: h}
 }
