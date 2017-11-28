@@ -302,7 +302,7 @@ func TestMockCreateBasic(t *testing.T) {
 
 	user := User{Name: "jinzhu"}
 	expect.Create(&user).WillSucceed(1, 1)
-	rowsAffected := db.LogMode(true).Create(&user).RowsAffected
+	rowsAffected := db.Create(&user).RowsAffected
 
 	if rowsAffected != 1 {
 		t.Errorf("Expected rows affected to be 1 but got %d", rowsAffected)
@@ -354,51 +354,53 @@ func TestMockSaveBasic(t *testing.T) {
 	}
 }
 
-// func TestMockUpdateBasic(t *testing.T) {
-// 	db, expect, err := expecter.NewDefaultExpecter()
-// 	defer db.Close()
+func TestMockUpdateBasic(t *testing.T) {
+	t.SkipNow()
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
 
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	newName := "uhznij"
-// 	user := User{Name: "jinzhu"}
+	newName := "uhznij"
+	user := User{Name: "jinzhu"}
 
-// 	expect.Model(&user).Update("name", newName).WillSucceed(1, 1)
-// 	db.Model(&user).Update("name", newName)
+	expect.Model(&user).Update("name", newName).WillSucceed(1, 1)
+	db.Model(&user).Update("name", newName)
 
-// 	if err := expect.AssertExpectations(); err != nil {
-// 		t.Errorf("Expectations were not met %s", err.Error())
-// 	}
+	if err := expect.AssertExpectations(); err != nil {
+		t.Errorf("Expectations were not met %s", err.Error())
+	}
 
-// 	if user.Name != newName {
-// 		t.Errorf("Should have name %s but got %s", newName, user.Name)
-// 	}
-// }
+	if user.Name != newName {
+		t.Errorf("Should have name %s but got %s", newName, user.Name)
+	}
+}
 
-// func TestMockUpdatesBasic(t *testing.T) {
-// 	db, expect, err := expecter.NewDefaultExpecter()
-// 	defer db.Close()
+func TestMockUpdatesBasic(t *testing.T) {
+	t.SkipNow()
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
 
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	user := User{Name: "jinzhu", Age: 18}
-// 	updated := User{Name: "jinzhu", Age: 88}
+	user := User{Name: "jinzhu", Age: 18}
+	updated := User{Name: "jinzhu", Age: 88}
 
-// 	expect.Model(&user).Updates(updated).WillSucceed(1, 1)
-// 	db.Model(&user).Updates(updated)
+	expect.Model(&user).Updates(updated).WillSucceed(1, 1)
+	db.Model(&user).Updates(updated)
 
-// 	if err := expect.AssertExpectations(); err != nil {
-// 		t.Errorf("Expectations were not met %s", err.Error())
-// 	}
+	if err := expect.AssertExpectations(); err != nil {
+		t.Errorf("Expectations were not met %s", err.Error())
+	}
 
-// 	if user.Age != updated.Age {
-// 		t.Errorf("Should have age %d but got %d", user.Age, updated.Age)
-// 	}
-// }
+	if user.Age != updated.Age {
+		t.Errorf("Should have age %d but got %d", user.Age, updated.Age)
+	}
+}
 
 func TestUserRepoFind(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
