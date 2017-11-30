@@ -112,6 +112,15 @@ func (h *Expecter) Find(out interface{}, where ...interface{}) QueryExpectation 
 	return h.query()
 }
 
+// Count triggers a query
+func (h *Expecter) Count(out interface{}) QueryExpectation {
+	var args []interface{}
+	args = append(args, out)
+	h.callmap["Count"] = args
+
+	return h.query()
+}
+
 /* UPDATE */
 
 // Save mocks updating a record in the DB and will trigger db.Exec()

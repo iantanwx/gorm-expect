@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/jinzhu/gorm"
 )
 
@@ -94,8 +93,6 @@ func recordExecCallback(scope *gorm.Scope) {
 		}
 
 		newRegexp.WriteString(after)
-
-		spew.Dump(newRegexp.String())
 
 		stmt.sql = newRegexp.String()
 

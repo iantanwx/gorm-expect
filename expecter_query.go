@@ -1,6 +1,7 @@
 package gormexpect
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"reflect"
 
@@ -156,17 +157,23 @@ func (q *SqlmockQueryExpectation) getRelationRows(rVal reflect.Value, fieldName 
 
 func (q *SqlmockQueryExpectation) getDestRows(out interface{}) *sqlmock.Rows {
 	var columns []string
-	for _, field := range (&gorm.Scope{}).New(out).GetModelStruct().StructFields {
-		if field.IsNormal {
-			columns = append(columns, field.DBName)
+	outVal := indirect(reflect.ValueOf(out))
+
+	if outVal.Kind() == reflect.Slice || outVal.Kind() == reflect.Struct {
+		for _, field := range (&gorm.Scope{}).New(out).GetModelStruct().StructFields {
+			if field.IsNormal {
+				columns = append(columns, field.DBName)
+			}
 		}
+	} else {
+		columns = append(columns, "count")
 	}
 
 	rows := sqlmock.NewRows(columns)
-	outVal := indirect(reflect.ValueOf(out))
 
-	// SELECT multiple columns
-	if outVal.Kind() == reflect.Slice {
+	// SELECT multiple rows
+	switch outVal.Kind() {
+	case reflect.Slice:
 		outSlice := []interface{}{}
 
 		for i := 0; i < outVal.Len(); i++ {
@@ -178,11 +185,15 @@ func (q *SqlmockQueryExpectation) getDestRows(out interface{}) *sqlmock.Rows {
 			row := getRowForFields(scope.Fields())
 			rows = rows.AddRow(row...)
 		}
-	} else if outVal.Kind() == reflect.Struct { // SELECT with LIMIT 1
+	case reflect.Struct:
 		row := getRowForFields(q.scope.Fields())
 		rows = rows.AddRow(row...)
-	} else {
-		panic(fmt.Errorf("Can only get rows for slice or struct"))
+
+	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		count, _ := driver.DefaultParameterConverter.ConvertValue(outVal.Interface())
+		rows = rows.AddRow(count)
+	default:
+		panic(fmt.Errorf("Can only get rows for slice, struct, or int/uint. Got: %s", outVal.Kind()))
 	}
 
 	return rows
@@ -201,6 +212,8 @@ func (q *SqlmockQueryExpectation) callMethods() {
 		methodVal := noop.MethodByName(methodName)
 
 		switch method := methodVal.Interface().(type) {
+		case func(interface{}) *gorm.DB:
+			method(args[0])
 		case func(interface{}, ...interface{}) *gorm.DB:
 			method(args[0], args[1:]...)
 		default:
