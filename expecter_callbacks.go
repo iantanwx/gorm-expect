@@ -149,7 +149,6 @@ func recordPreloadCallback(scope *gorm.Scope) {
 	preload := getPreload(scope)
 
 	if len(preload) > 0 {
-		// spew.Printf("callback:preload\r\n%s\r\n", spew.Sdump(scope.Search.preload))
 		recorder.(*Recorder).preload = preload
 	}
 }

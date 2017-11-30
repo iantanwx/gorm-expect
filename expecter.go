@@ -1,6 +1,8 @@
 package gormexpect
 
 import (
+	"reflect"
+
 	"github.com/jinzhu/gorm"
 )
 
@@ -71,9 +73,9 @@ func (h *Expecter) Model(model interface{}) *Expecter {
 /* CREATE */
 
 // Create mocks insertion of a model into the DB
-func (h *Expecter) Create(model interface{}) Execer {
+func (h *Expecter) Create(model interface{}) ExecExpectation {
 	h.gorm = h.gorm.Create(model)
-	return h.adapter.ExpectExec(h.recorder.stmts[0])
+	return h.exec()
 }
 
 /* READ */
@@ -99,6 +101,36 @@ func (h *Expecter) First(out interface{}, where ...interface{}) QueryExpectation
 	h.callmap["First"] = args
 
 	return h.query()
+}
+
+// FirstOrCreate slightly differs from the equivalent Gorm method. It takes an
+// extra argument (returns). If out and returns have the same type, returns is
+// copied into out and nil is returned. The INSERT is not executed.
+// If returns is nil, a not found error is set, and an ExecExpectation is
+// returned.
+func (h *Expecter) FirstOrCreate(out interface{}, returns interface{}, where ...interface{}) ExecExpectation {
+	var args []interface{}
+	args = append(args, out)
+	args = append(args, where...)
+
+	outType := reflect.TypeOf(out)
+	returnsType := reflect.TypeOf(returns)
+
+	// check if out and returns are of the same type.
+	// if not, that means we need to trigger an unsuccessful First and return
+	// an ExecExpectation
+	if outType != returnsType {
+		h.callmap["First"] = args
+		expectation := h.query()
+		expectation.Returns(nil)
+
+		// reset callmap
+		h.callmap = make(map[string][]interface{})
+		return h.Create(out)
+	}
+
+	h.First(out, where...).Returns(out)
+	return nil
 }
 
 // Find triggers a Query
@@ -139,6 +171,15 @@ func (h *Expecter) Update(attrs ...interface{}) ExecExpectation {
 func (h *Expecter) Updates(values interface{}, ignoreProtectedAttrs ...bool) ExecExpectation {
 	h.gorm.Updates(values, ignoreProtectedAttrs...)
 	return h.exec()
+}
+
+func (h *Expecter) clone() *Expecter {
+	return &Expecter{
+		adapter:  h.adapter,
+		callmap:  make(map[string][]interface{}),
+		gorm:     h.gorm.LogMode(true),
+		recorder: &Recorder{},
+	}
 }
 
 // query returns a SqlmockQuery with the current DB state

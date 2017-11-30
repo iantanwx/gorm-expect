@@ -35,20 +35,21 @@ func (q *SqlmockQueryExpectation) Returns(out interface{}) QueryExpectation {
 	outVal := indirect(reflect.ValueOf(out))
 
 	destQuery := q.parent.recorder.stmts[0]
-	subQueries := q.parent.recorder.stmts[1:]
 
 	// main query always at the head of the slice
 	q.parent.adapter.ExpectQuery(destQuery).Returns(q.getDestRows(out))
 
-	// subqueries are preload
-	for _, subQuery := range subQueries {
-		if subQuery.preload != "" {
-			if field, ok := scope.FieldByName(subQuery.preload); ok {
-				expectation := q.parent.adapter.ExpectQuery(subQuery)
-				rows, hasRows := q.getRelationRows(outVal.FieldByName(subQuery.preload), subQuery.preload, field.Relationship)
+	if len(q.parent.recorder.stmts) > 1 {
+		// subqueries are preload
+		for _, subQuery := range q.parent.recorder.stmts[1:] {
+			if subQuery.preload != "" {
+				if field, ok := scope.FieldByName(subQuery.preload); ok {
+					expectation := q.parent.adapter.ExpectQuery(subQuery)
+					rows, hasRows := q.getRelationRows(outVal.FieldByName(subQuery.preload), subQuery.preload, field.Relationship)
 
-				if hasRows {
-					expectation.Returns(rows)
+					if hasRows {
+						expectation.Returns(rows)
+					}
 				}
 			}
 		}
@@ -171,6 +172,11 @@ func (q *SqlmockQueryExpectation) getDestRows(out interface{}) *sqlmock.Rows {
 
 	rows := sqlmock.NewRows(columns)
 
+	// short circuit if we got nil
+	if outVal.Kind() == reflect.Invalid {
+		return rows
+	}
+
 	// SELECT multiple rows
 	switch outVal.Kind() {
 	case reflect.Slice:
@@ -193,7 +199,7 @@ func (q *SqlmockQueryExpectation) getDestRows(out interface{}) *sqlmock.Rows {
 		count, _ := driver.DefaultParameterConverter.ConvertValue(outVal.Interface())
 		rows = rows.AddRow(count)
 	default:
-		panic(fmt.Errorf("Can only get rows for slice, struct, or int/uint. Got: %s", outVal.Kind()))
+		panic(fmt.Errorf("Can only get rows for slice, struct, int/uint, or nil. Got: %s", outVal.Kind()))
 	}
 
 	return rows

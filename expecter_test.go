@@ -199,7 +199,7 @@ func TestCount(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func TestMockPreloadHasMany(t *testing.T) {
+func TestPreloadHasMany(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -218,7 +218,7 @@ func TestMockPreloadHasMany(t *testing.T) {
 	assert.Equal(t, out, in)
 }
 
-func TestMockPreloadHasOne(t *testing.T) {
+func TestPreloadHasOne(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -241,7 +241,7 @@ func TestMockPreloadHasOne(t *testing.T) {
 	}
 }
 
-func TestMockPreloadMany2Many(t *testing.T) {
+func TestPreloadMany2Many(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -265,7 +265,7 @@ func TestMockPreloadMany2Many(t *testing.T) {
 	}
 }
 
-func TestMockPreloadMultiple(t *testing.T) {
+func TestPreloadMultiple(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -286,7 +286,7 @@ func TestMockPreloadMultiple(t *testing.T) {
 	assert.Equal(t, out, in)
 }
 
-func TestMockCreateBasic(t *testing.T) {
+func TestCreate(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -305,7 +305,7 @@ func TestMockCreateBasic(t *testing.T) {
 	assert.Equal(t, expected, user.Id)
 }
 
-func TestMockCreateError(t *testing.T) {
+func TestCreateError(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -324,7 +324,7 @@ func TestMockCreateError(t *testing.T) {
 	assert.Equal(t, mockError, dbError)
 }
 
-func TestMockSaveBasic(t *testing.T) {
+func TestSaveBasic(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -343,7 +343,7 @@ func TestMockSaveBasic(t *testing.T) {
 	assert.Equal(t, expectedID, user.Id)
 }
 
-func TestMockUpdateBasic(t *testing.T) {
+func TestUpdate(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -361,7 +361,7 @@ func TestMockUpdateBasic(t *testing.T) {
 	assert.Equal(t, newName, user.Name)
 }
 
-func TestMockUpdatesBasic(t *testing.T) {
+func TestUpdatesBasic(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -376,7 +376,25 @@ func TestMockUpdatesBasic(t *testing.T) {
 	db.Model(&user).Updates(updated)
 
 	assert.Nil(t, expect.AssertExpectations())
-	assert.Equal(t, updated.Age, user.Age)
+	assert.Equal(t, user.Age, updated.Age)
+}
+
+func TestFirstOrCreateSuccess(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer func() {
+		db.Close()
+	}()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user := User{Id: 1, Name: "jinzhu", Age: 18}
+
+	expect.FirstOrCreate(&user, nil)
+	db.FirstOrCreate(&user)
+
+	assert.Nil(t, expect.AssertExpectations())
 }
 
 func TestUserRepoFind(t *testing.T) {
