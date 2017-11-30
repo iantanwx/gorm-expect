@@ -134,6 +134,23 @@ func (h *Expecter) FirstOrCreate(out interface{}, returns interface{}, where ...
 	return nil
 }
 
+// FirstOrInit is similar to FirstOrCreate
+func (h *Expecter) FirstOrInit(out interface{}, returns interface{}, where ...interface{}) *Expecter {
+	var args []interface{}
+	args = append(args, out)
+	args = append(args, where...)
+	h.callmap["FirstOrInit"] = args
+
+	h.query().Returns(returns)
+
+	//reset
+	h.callmap = make(map[string][]interface{})
+	h.recorder.stmts = []Stmt{}
+	h.recorder.preload = []Preload{}
+
+	return h
+}
+
 // Find triggers a Query
 func (h *Expecter) Find(out interface{}, where ...interface{}) QueryExpectation {
 	// store our call in the map
