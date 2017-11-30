@@ -1,9 +1,11 @@
 package gormexpect
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/jinzhu/gorm"
 )
 
@@ -14,8 +16,12 @@ type Recorder struct {
 }
 
 // Record records a Stmt for use when SQL is finally executed
-func (r *Recorder) Record(stmt Stmt) {
-	stmt.sql = regexp.QuoteMeta(stmt.sql)
+// By default, it escapes with regexp.EscapeMeta
+func (r *Recorder) Record(stmt Stmt, shouldEscape bool) {
+	if shouldEscape {
+		stmt.sql = regexp.QuoteMeta(stmt.sql)
+	}
+
 	r.stmts = append(r.stmts, stmt)
 }
 
@@ -44,6 +50,7 @@ type Stmt struct {
 
 func recordExecCallback(scope *gorm.Scope) {
 	r, ok := scope.Get("gorm:recorder")
+	recorder := r.(*Recorder)
 
 	if !ok {
 		panic(fmt.Errorf("Expected a recorder to be set, but got none"))
@@ -55,9 +62,49 @@ func recordExecCallback(scope *gorm.Scope) {
 		args: scope.SQLVars,
 	}
 
-	recorder := r.(*Recorder)
+	// find the arguments and give them a more permissive regex
+	re := regexp.MustCompile(` "[a-zA-Z_]+" = \?,?`)
 
-	recorder.Record(stmt)
+	// we need to check if the SQL to be recorded has arguments. If it does,
+	// then we generate a more permissive statement. This is becuase
+	// internally, GORM uses a map to store these arguments; map iteration
+	// order is _not_ guaranteed in Go.
+	if re.MatchString(stmt.sql) {
+		argsMatches := re.FindAllStringSubmatch(stmt.sql, -1)
+		argsMatchesIndex := re.FindAllStringSubmatchIndex(stmt.sql, -1)
+
+		// split up the previous, non-permissions regex. we want to disregard
+		// order of arguments. before and after represent the substrings that
+		// are not SQL arguments
+		before := stmt.sql[0:argsMatchesIndex[0][0]]
+		after := stmt.sql[argsMatchesIndex[len(argsMatchesIndex)-1][1]:]
+
+		// we generate a better regex
+		newRegexp := bytes.NewBufferString("")
+		newRegexp.WriteString(before)
+		newRegexp.WriteString(" (")
+
+		for i, token := range argsMatches {
+			if i == len(argsMatches)-1 {
+				newRegexp.WriteString(fmt.Sprintf("%s)*", token[0]))
+				continue
+			}
+
+			newRegexp.WriteString(fmt.Sprintf("%s|", token[0]))
+		}
+
+		newRegexp.WriteString(after)
+
+		spew.Dump(newRegexp.String())
+
+		stmt.sql = newRegexp.String()
+
+		recorder.Record(stmt, false)
+		return
+	}
+
+	// if there aren't any arguments, we just record the SQL as-is.
+	recorder.Record(stmt, true)
 }
 
 func populateScopeValueCallback(scope *gorm.Scope) {
@@ -91,7 +138,7 @@ func recordQueryCallback(scope *gorm.Scope) {
 		recorder.preload = recorder.preload[1:]
 	}
 
-	recorder.Record(stmt)
+	recorder.Record(stmt, true)
 }
 
 func recordPreloadCallback(scope *gorm.Scope) {

@@ -355,7 +355,6 @@ func TestMockSaveBasic(t *testing.T) {
 }
 
 func TestMockUpdateBasic(t *testing.T) {
-	t.SkipNow()
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
@@ -379,7 +378,6 @@ func TestMockUpdateBasic(t *testing.T) {
 }
 
 func TestMockUpdatesBasic(t *testing.T) {
-	t.SkipNow()
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
 
