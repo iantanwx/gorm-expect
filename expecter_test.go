@@ -94,21 +94,6 @@ func TestNewCustomExpecter(t *testing.T) {
 
 func TestQuery(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expect.First(&User{})
-	db.First(&User{})
-
-	if err := expect.AssertExpectations(); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestQueryReturn(t *testing.T) {
-	db, expect, err := expecter.NewDefaultExpecter()
 	defer func() {
 		db.Close()
 	}()
@@ -121,7 +106,6 @@ func TestQueryReturn(t *testing.T) {
 	out := User{Id: 1, Name: "jinzhu"}
 
 	expect.First(&in).Returns(out)
-
 	db.First(&in)
 
 	if e := expect.AssertExpectations(); e != nil {
@@ -137,7 +121,7 @@ func TestQueryReturn(t *testing.T) {
 	}
 }
 
-func TestQueryReturnInline(t *testing.T) {
+func TestInlineQuery(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer func() {
 		db.Close()
@@ -157,7 +141,7 @@ func TestQueryReturnInline(t *testing.T) {
 	assert.Equal(t, in, out)
 }
 
-func TestFindStructDest(t *testing.T) {
+func TestStructDest(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer func() {
 		db.Close()
@@ -167,14 +151,14 @@ func TestFindStructDest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	in := &User{Id: 1}
+	actual := User{Id: 1}
+	expected := User{Id: 1, Name: "jinzhu"}
 
-	expect.Find(in)
-	db.Find(&User{Id: 1})
+	expect.Find(&actual).Returns(expected)
+	db.Find(&actual)
 
-	if e := expect.AssertExpectations(); e != nil {
-		t.Error(e)
-	}
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, expected, actual)
 }
 
 func TestFindSlice(t *testing.T) {
@@ -191,13 +175,28 @@ func TestFindSlice(t *testing.T) {
 	expect.Find(&in).Returns(&out)
 	db.Find(&in)
 
-	if e := expect.AssertExpectations(); e != nil {
-		t.Error(e)
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, out, in)
+}
+
+func TestCount(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer func() {
+		db.Close()
+	}()
+
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if ne := reflect.DeepEqual(in, out); !ne {
-		t.Error("Expected equal slices")
-	}
+	var actual int64
+	var expected int64 = 5
+
+	expect.Model(User{}).Where("name = ?", "jinzhu").Count(&actual).Returns(5)
+	db.Model(User{}).Where("name = ?", "jinzhu").Count(&actual)
+
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, expected, actual)
 }
 
 func TestMockPreloadHasMany(t *testing.T) {
@@ -283,13 +282,8 @@ func TestMockPreloadMultiple(t *testing.T) {
 	expect.Preload("Languages").Preload("CreditCard").Find(&in).Returns(out)
 	db.Preload("Languages").Preload("CreditCard").Find(&in)
 
-	if err := expect.AssertExpectations(); err != nil {
-		t.Error(err)
-	}
-
-	if !reflect.DeepEqual(in, out) {
-		t.Error("In and out are not equal")
-	}
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, out, in)
 }
 
 func TestMockCreateBasic(t *testing.T) {
@@ -304,13 +298,11 @@ func TestMockCreateBasic(t *testing.T) {
 	expect.Create(&user).WillSucceed(1, 1)
 	rowsAffected := db.Create(&user).RowsAffected
 
-	if rowsAffected != 1 {
-		t.Errorf("Expected rows affected to be 1 but got %d", rowsAffected)
-	}
+	var expected int64 = 1
 
-	if user.Id != 1 {
-		t.Errorf("User id field should be 1, but got %d", user.Id)
-	}
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, expected, rowsAffected)
+	assert.Equal(t, expected, user.Id)
 }
 
 func TestMockCreateError(t *testing.T) {
@@ -328,9 +320,8 @@ func TestMockCreateError(t *testing.T) {
 
 	dbError := db.Create(&user).Error
 
-	if dbError == nil || dbError != mockError {
-		t.Errorf("Expected *DB.Error to be set, but it was not")
-	}
+	assert.Error(t, dbError)
+	assert.Equal(t, mockError, dbError)
 }
 
 func TestMockSaveBasic(t *testing.T) {
@@ -344,14 +335,12 @@ func TestMockSaveBasic(t *testing.T) {
 	user := User{Name: "jinzhu"}
 	expect.Save(&user).WillSucceed(1, 1)
 	expected := db.Save(&user)
+	var expectedRows int64 = 1
+	var expectedID int64 = 1
 
-	if err := expect.AssertExpectations(); err != nil {
-		t.Errorf("Expectations were not met %s", err.Error())
-	}
-
-	if expected.RowsAffected != 1 || user.Id != 1 {
-		t.Errorf("Expected result was not returned")
-	}
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, expectedRows, expected.RowsAffected)
+	assert.Equal(t, expectedID, user.Id)
 }
 
 func TestMockUpdateBasic(t *testing.T) {
@@ -368,13 +357,8 @@ func TestMockUpdateBasic(t *testing.T) {
 	expect.Model(&user).Update("name", newName).WillSucceed(1, 1)
 	db.Model(&user).Update("name", newName)
 
-	if err := expect.AssertExpectations(); err != nil {
-		t.Errorf("Expectations were not met %s", err.Error())
-	}
-
-	if user.Name != newName {
-		t.Errorf("Should have name %s but got %s", newName, user.Name)
-	}
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, newName, user.Name)
 }
 
 func TestMockUpdatesBasic(t *testing.T) {
@@ -391,13 +375,8 @@ func TestMockUpdatesBasic(t *testing.T) {
 	expect.Model(&user).Updates(updated).WillSucceed(1, 1)
 	db.Model(&user).Updates(updated)
 
-	if err := expect.AssertExpectations(); err != nil {
-		t.Errorf("Expectations were not met %s", err.Error())
-	}
-
-	if user.Age != updated.Age {
-		t.Errorf("Should have age %d but got %d", user.Age, updated.Age)
-	}
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, updated.Age, user.Age)
 }
 
 func TestUserRepoFind(t *testing.T) {
