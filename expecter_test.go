@@ -391,7 +391,7 @@ func TestFirstOrCreateSuccess(t *testing.T) {
 
 	user := User{Id: 1, Name: "jinzhu", Age: 18}
 
-	expect.FirstOrCreate(&user, nil)
+	expect.FirstOrCreate(&user, nil).WillSucceed(1, 1)
 	db.FirstOrCreate(&user)
 
 	assert.Nil(t, expect.AssertExpectations())

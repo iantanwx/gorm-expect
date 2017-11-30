@@ -121,10 +121,11 @@ func (h *Expecter) FirstOrCreate(out interface{}, returns interface{}, where ...
 	// an ExecExpectation
 	if outType != returnsType {
 		h.callmap["First"] = args
-		expectation := h.query()
-		expectation.Returns(nil)
+		h.query().Returns(nil)
 
-		// reset callmap
+		// reset callmap and recorder
+		h.recorder.stmts = []Stmt{}
+		h.recorder.preload = []Preload{}
 		h.callmap = make(map[string][]interface{})
 		return h.Create(out)
 	}
