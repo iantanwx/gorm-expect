@@ -193,6 +193,14 @@ func (h *Expecter) Updates(values interface{}, ignoreProtectedAttrs ...bool) Exe
 	return h.exec()
 }
 
+/* DELETE */
+
+// Delete does the same thing as gorm.Delete
+func (h *Expecter) Delete(model interface{}, where ...interface{}) ExecExpectation {
+	h.gorm.Delete(model, where...)
+	return h.exec()
+}
+
 func (h *Expecter) clone() *Expecter {
 	return &Expecter{
 		adapter:  h.adapter,

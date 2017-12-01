@@ -397,6 +397,44 @@ func TestFirstOrCreateSuccess(t *testing.T) {
 	assert.Nil(t, expect.AssertExpectations())
 }
 
+func TestDeleteSuccess(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer func() {
+		db.Close()
+	}()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user := &User{Id: 1, Name: "jinzhu"}
+
+	expect.Delete(&user, "id = ?", 1).WillSucceed(1, 1)
+	rowsAffected := db.Delete(&user, "id = ?", 1).RowsAffected
+
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, int64(1), rowsAffected)
+}
+
+func TestDeleteError(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer func() {
+		db.Close()
+	}()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user := &User{Id: 1, Name: "jinzhu"}
+
+	expect.Delete(&user, "id = ?", 1).WillFail(errors.New("Could not delete"))
+	rowsAffected := db.Delete(&user, "id = ?", 1).RowsAffected
+
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, int64(0), rowsAffected)
+}
+
 func TestFirstOrInitNil(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer func() {
