@@ -27,6 +27,14 @@ func (r *Recorder) Record(stmt Stmt, shouldEscape bool) {
 // GetFirst returns the first recorded sql statement logged. If there are no
 // statements, false is returned
 func (r *Recorder) GetFirst() (Stmt, bool) {
+	defer func() {
+		if len(r.stmts) > 1 {
+			r.stmts = r.stmts[1:]
+		}
+
+		r.stmts = []Stmt{}
+	}()
+
 	if len(r.stmts) > 0 {
 		return r.stmts[0], true
 	}
@@ -53,6 +61,10 @@ func recordExecCallback(scope *gorm.Scope) {
 
 	if !ok {
 		panic(fmt.Errorf("Expected a recorder to be set, but got none"))
+	}
+
+	if scope.SQL == "" {
+		return
 	}
 
 	stmt := Stmt{

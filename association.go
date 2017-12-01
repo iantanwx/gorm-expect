@@ -30,11 +30,13 @@ type ExecWrapper struct {
 	expectation ExecExpectation
 }
 
-// WillSucceed has the same signature as ExecExpectation.WillSucceed
+// WillSucceed has the same signature as ExecExpectation.WillSucceed. It is
+// only returned from Append() and Replace().
 func (w *ExecWrapper) WillSucceed(lastReturnID, rowsAffected int64) *QueryWrapper {
 	// execute INSERT first
 	w.expectation.WillSucceed(lastReturnID, rowsAffected)
 
+	// force the second query becuase we don't record it
 	value := w.association.parent.gorm.Value
 	expectation := w.association.parent.Find(&value)
 
