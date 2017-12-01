@@ -130,11 +130,8 @@ func (h *Expecter) FirstOrCreate(out interface{}, returns interface{}, where ...
 	if outType != returnsType {
 		h.callmap["First"] = args
 		h.query().Returns(nil)
+		h.reset()
 
-		// reset callmap and recorder
-		h.recorder.stmts = []Stmt{}
-		h.recorder.preload = []Preload{}
-		h.callmap = make(map[string][]interface{})
 		return h.Create(out)
 	}
 
@@ -150,11 +147,7 @@ func (h *Expecter) FirstOrInit(out interface{}, returns interface{}, where ...in
 	h.callmap["FirstOrInit"] = args
 
 	h.query().Returns(returns)
-
-	//reset
-	h.callmap = make(map[string][]interface{})
-	h.recorder.stmts = []Stmt{}
-	h.recorder.preload = []Preload{}
+	h.reset()
 
 	return h
 }
@@ -211,9 +204,14 @@ func (h *Expecter) clone() *Expecter {
 	return &Expecter{
 		adapter:  h.adapter,
 		callmap:  make(map[string][]interface{}),
-		gorm:     h.gorm.LogMode(true),
+		gorm:     h.gorm,
 		recorder: &Recorder{},
 	}
+}
+
+func (h *Expecter) reset() {
+	h.callmap = make(map[string][]interface{})
+	h.recorder = &Recorder{}
 }
 
 // query returns a SqlmockQuery with the current DB state
