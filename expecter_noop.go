@@ -110,7 +110,7 @@ func (s *NoopStmt) Query(args []driver.Value) (driver.Rows, error) {
 }
 
 // NewNoopDB initialises a new DefaultNoopDB
-func NewNoopDB() (gorm.SQLCommon, error) {
+func NewNoopDB() (gorm.SQLCommon, NoopController, error) {
 	pool.Lock()
 	dsn := fmt.Sprintf("noop_db_%d", pool.counter)
 	pool.counter++
@@ -121,17 +121,18 @@ func NewNoopDB() (gorm.SQLCommon, error) {
 
 	db, err := noop.open()
 
-	return db, err
+	return db, noop, err
 }
 
 // NoopConnection implements sql/driver.Conn
 // for our purposes, the noop connection never returns an error, as we only
-// require it for generating queries. It is necessary because eagerloading
+// require it for generating queries. It is necessary because eager loading
 // will fail if any operation returns an error
 type NoopConnection struct {
-	dsn    string
-	drv    *NoopDriver
-	opened int
+	dsn           string
+	drv           *NoopDriver
+	opened        int
+	returnNilRows bool
 }
 
 func (c *NoopConnection) open() (*sql.DB, error) {
@@ -157,6 +158,11 @@ func (c *NoopConnection) Close() error {
 	return nil
 }
 
+// NoopController provides a crude interface for manipulating NoopConnection
+type NoopController interface {
+	ReturnNilRows()
+}
+
 // Begin implements sql/driver.Conn
 func (c *NoopConnection) Begin() (driver.Tx, error) {
 	return c, nil
@@ -174,7 +180,16 @@ func (c *NoopConnection) Prepare(query string) (driver.Stmt, error) {
 
 // Query implements sql/driver.Conn
 func (c *NoopConnection) Query(query string, args []driver.Value) (driver.Rows, error) {
+	if c.returnNilRows {
+		c.returnNilRows = false
+		return &NoopRows{pos: 1}, nil
+	}
+
 	return &NoopRows{}, nil
+}
+
+func (c *NoopConnection) ReturnNilRows() {
+	c.returnNilRows = true
 }
 
 // Commit implements sql/driver.Conn

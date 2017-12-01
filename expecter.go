@@ -16,6 +16,7 @@ type Expecter struct {
 	adapter  Adapter
 	callmap  map[string][]interface{} // these get called after we get a value from `Returns`
 	gorm     *gorm.DB
+	noop     NoopController
 	recorder *Recorder
 }
 
@@ -28,7 +29,7 @@ func NewDefaultExpecter() (*gorm.DB, *Expecter, error) {
 	}
 
 	recorder := &Recorder{}
-	noop, _ := NewNoopDB()
+	noop, noopc, _ := NewNoopDB()
 	gormNoop, _ := gorm.Open("sqlmock", noop)
 	gormNoop = gormNoop.Set("gorm:recorder", recorder)
 
@@ -42,6 +43,7 @@ func NewDefaultExpecter() (*gorm.DB, *Expecter, error) {
 		adapter:  adapter,
 		callmap:  make(map[string][]interface{}),
 		gorm:     gormNoop,
+		noop:     noopc,
 		recorder: recorder,
 	}, nil
 }

@@ -397,7 +397,7 @@ func TestFirstOrCreateSuccess(t *testing.T) {
 	assert.Nil(t, expect.AssertExpectations())
 }
 
-func TestFirstOrCreateNil(t *testing.T) {
+func TestFirstOrInitNil(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer func() {
 		db.Close()
@@ -407,19 +407,20 @@ func TestFirstOrCreateNil(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	actual := User{}
+	in1 := User{}
+	in2 := User{}
 	expected := User{Id: 1, Name: "jinzhu", Age: 18}
 
-	expect.FirstOrInit(&actual, nil, expected)
-	db.FirstOrInit(&actual, expected)
+	expect.FirstOrInit(&in1, nil, expected)
+	db.FirstOrInit(&in2, expected)
 
 	assert.Nil(t, expect.AssertExpectations())
-	assert.Equal(t, expected, actual)
+	assert.Equal(t, in1.Id, in2.Id)
+	assert.Equal(t, in1.Name, in2.Name)
+	assert.Equal(t, in1.Age, in2.Age)
 }
 
-// Borked due to initial order problems with Updates.
 func TestFirstOrInitChain(t *testing.T) {
-	t.SkipNow()
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer func() {
 		db.Close()
@@ -429,16 +430,42 @@ func TestFirstOrInitChain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	actual := User{}
-	expected := User{Id: 1, Name: "jinzhu", Age: 18}
+	in1 := User{}
+	in2 := User{}
 
-	expect.FirstOrInit(&actual, nil, expected).Create(&actual).WillSucceed(1, 1)
-	db.FirstOrInit(&actual, expected).Create(&actual)
+	expected := User{Id: 1, Name: "jinzhu", Age: 18}
+	var expectedRowsAffected int64 = 1
+
+	expect.FirstOrInit(&in1, nil, expected).Create(&in1).WillSucceed(1, 1)
+	rowsAffected := db.FirstOrInit(&in2, expected).Create(&in2).RowsAffected
 
 	assert.Nil(t, expect.AssertExpectations())
-	assert.Equal(t, 1, db.RowsAffected)
-	assert.NotEqual(t, expected.CreatedAt, actual.CreatedAt)
-	assert.NotEqual(t, expected.UpdatedAt, actual.UpdatedAt)
+	assert.Equal(t, in1.Id, in2.Id)
+	assert.Equal(t, in1.Name, in2.Name)
+	assert.Equal(t, in1.Age, in2.Age)
+	assert.Equal(t, expectedRowsAffected, rowsAffected)
+}
+
+func TestFirstOrInitFound(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer func() {
+		db.Close()
+	}()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	in1 := User{}
+	in2 := User{}
+
+	expected := User{Id: 1, Name: "jinzhu", Age: 18}
+
+	expect.FirstOrInit(&in1, expected, "id = ?", 1)
+	db.FirstOrInit(&in2, "id = ?", 1)
+
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, expected, in2)
 }
 
 func TestUserRepoFind(t *testing.T) {
