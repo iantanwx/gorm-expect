@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	expecter "github.com/iantanwx/gorm-expect"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -596,4 +597,22 @@ func TestUserRepoPreload2(t *testing.T) {
 	assert.Nil(t, expect.AssertExpectations())
 	assert.Nil(t, err)
 	assert.Equal(t, expected, actual)
+}
+
+func TestAssociationModeFind(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var emails []Email
+	user := &User{Id: 1, Name: "jinzhu"}
+
+	expect.Model(&user).Association("Emails").Find(&emails).Returns([]Email{Email{Email: "jinzhu@gmail.com"}})
+	db.Debug().Model(&user).Association("Emails").Find(&emails)
+
+	spew.Dump(emails)
+	assert.Nil(t, expect.AssertExpectations())
 }

@@ -208,10 +208,7 @@ func (q *SqlmockQueryExpectation) getDestRows(out interface{}) *sqlmock.Rows {
 	return rows
 }
 
-// callMethods is used to call deferred db.* methods. It is necessary to
-// ensure scope.Value has a primary key, extracted from the model passed to
-// SqlmockQueryExpectation.Returns. This is because the noop database does not
-// return any actual rows.
+// callMethods is used to call deferred db.* methods. It is necessary to ensure scope.Value has a primary key, extracted from the model passed to SqlmockQueryExpectation.Returns. This is because the noop database does not return any actual rows.
 func (q *SqlmockQueryExpectation) callMethods() {
 	q.parent.gorm = q.parent.gorm.Set("gorm_expect:ret", q.scope.Value)
 	q.parent.gorm.Callback().Query().Before("gorm:preload").Register("gorm_expect:populate_scope_val", populateScopeValueCallback)
