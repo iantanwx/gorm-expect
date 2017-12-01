@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	expecter "github.com/iantanwx/gorm-expect"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -611,8 +610,23 @@ func TestAssociationModeFind(t *testing.T) {
 	user := &User{Id: 1, Name: "jinzhu"}
 
 	expect.Model(&user).Association("Emails").Find(&emails).Returns([]Email{Email{Email: "jinzhu@gmail.com"}})
-	db.Debug().Model(&user).Association("Emails").Find(&emails)
+	db.Model(&user).Association("Emails").Find(&emails)
 
-	spew.Dump(emails)
 	assert.Nil(t, expect.AssertExpectations())
+}
+
+func TestAssociationModeAppend(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user1 := User{Id: 1, Name: "jinzhu"}
+	user2 := User{Id: 1, Name: "jinzhu"}
+	expected := []Email{Email{Email: "uhznij@liamg.moc"}}
+
+	expect.Model(&user1).Association("Emails").Append(Email{Email: "uhznij@liamg.moc"}).WillSucceed(1, 1).Returns(expected)
+	db.Model(&user2).Association("Emails").Append(Email{Email: "uhznij@liamg.moc"})
 }

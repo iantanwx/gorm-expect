@@ -12,21 +12,22 @@ import (
 // QueryExpectation is returned by Expecter. It exposes a narrower API than
 // Queryer to limit footguns.
 type QueryExpectation interface {
-	Returns(value interface{}) QueryExpectation
+	Returns(value interface{}) *Expecter
 	// Error(err error) QueryExpectation
 }
 
 // SqlmockQueryExpectation implements QueryExpectation for go-sqlmock
 // It gets a pointer to Expecter
 type SqlmockQueryExpectation struct {
-	parent *Expecter
-	scope  *gorm.Scope
+	association *MockAssociation
+	parent      *Expecter
+	scope       *gorm.Scope
 }
 
 // Returns accepts an out type which should either be a struct or slice. Under
 // the hood, it converts a gorm model struct to sql.Rows that can be passed to
 // the underlying mock db
-func (q *SqlmockQueryExpectation) Returns(out interface{}) QueryExpectation {
+func (q *SqlmockQueryExpectation) Returns(out interface{}) *Expecter {
 	scope := (&gorm.Scope{}).New(out)
 	q.scope = scope
 	if out == nil {
@@ -58,7 +59,9 @@ func (q *SqlmockQueryExpectation) Returns(out interface{}) QueryExpectation {
 		}
 	}
 
-	return q
+	q.parent.reset()
+
+	return q.parent
 }
 
 func (q *SqlmockQueryExpectation) getRelationRows(rVal reflect.Value, fieldName string, relation *gorm.Relationship) (*sqlmock.Rows, bool) {

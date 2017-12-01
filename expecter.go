@@ -61,6 +61,13 @@ func NewExpecter(fn AdapterFactory, dialect string, args ...interface{}) (*gorm.
 
 /* PUBLIC METHODS */
 
+// Debug logs out queries
+func (h *Expecter) Debug() *Expecter {
+	h.gorm = h.gorm.Debug()
+
+	return h
+}
+
 // AssertExpectations checks if all expected Querys and Execs were satisfied.
 func (h *Expecter) AssertExpectations() error {
 	return h.adapter.AssertExpectations()
@@ -69,7 +76,7 @@ func (h *Expecter) AssertExpectations() error {
 // Start Association mode
 func (h *Expecter) Association(column string) *MockAssociation {
 	gormAssociation := h.gorm.Association(column)
-	return NewMockAssociation(gormAssociation, h)
+	return NewMockAssociation(column, gormAssociation, h)
 }
 
 // Model sets scope.Value
