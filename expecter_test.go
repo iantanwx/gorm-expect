@@ -625,8 +625,11 @@ func TestAssociationModeAppend(t *testing.T) {
 
 	user1 := User{Id: 1, Name: "jinzhu"}
 	user2 := User{Id: 1, Name: "jinzhu"}
-	expected := []Email{Email{Email: "uhznij@liamg.moc"}}
+	emails := []Email{Email{Id: 1, UserId: 1, Email: "uhznij@liamg.moc"}}
+	expected := User{Id: 1, Name: "jinzhu", Emails: emails}
 
-	expect.Model(&user1).Association("Emails").Append(Email{Email: "uhznij@liamg.moc"}).WillSucceed(1, 1).Returns(expected)
-	db.Model(&user2).Association("Emails").Append(Email{Email: "uhznij@liamg.moc"})
+	expect.Model(&user1).Association("Emails").Append(emails).WillSucceed(1, 1).Returns(expected)
+	db.Model(&user2).Association("Emails").Append(emails)
+
+	assert.Nil(t, expect.AssertExpectations())
 }

@@ -24,11 +24,13 @@ func (w *QueryWrapper) Returns(value interface{}) *MockAssociation {
 	return w.association
 }
 
+// ExecWrapper wraps ExecExpectation
 type ExecWrapper struct {
 	association *MockAssociation
 	expectation ExecExpectation
 }
 
+// WillSucceed has the same signature as ExecExpectation.WillSucceed
 func (w *ExecWrapper) WillSucceed(lastReturnID, rowsAffected int64) *QueryWrapper {
 	// execute INSERT first
 	w.expectation.WillSucceed(lastReturnID, rowsAffected)
