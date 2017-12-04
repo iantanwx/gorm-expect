@@ -71,3 +71,11 @@ func (a *MockAssociation) Delete(values ...interface{}) *ExecWrapper {
 
 	return &ExecWrapper{association: a, expectation: expectation}
 }
+
+// Clear wraps gorm.Association.Clear
+func (a *MockAssociation) Clear() *ExecWrapper {
+	a.noopAssociation.Clear()
+	expectation := &SqlmockExecExpectation{parent: a.parent}
+
+	return &ExecWrapper{association: a, expectation: expectation}
+}
