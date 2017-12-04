@@ -670,3 +670,27 @@ func TestAssociationModeClear(t *testing.T) {
 	assert.Nil(t, expect.AssertExpectations())
 	assert.Equal(t, 0, len(user.Emails))
 }
+
+func TestAssociationModeReplace(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	oldEmails := []Email{
+		Email{UserId: 1, Email: "jinzhu@gmail.com"},
+		Email{UserId: 1, Email: "uhznij@liamg.moc"},
+	}
+	newEmails := []Email{
+		Email{UserId: 1, Email: "jinzhu@gmail.com"},
+	}
+	user := User{Id: 1, Name: "jinzhu", Emails: oldEmails}
+
+	expect.Model(&user).Association("Emails").Replace(newEmails).WillSucceed(1, 1)
+	db.Model(&user).Association("Emails").Replace(newEmails)
+
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, 1, len(user.Emails))
+}
