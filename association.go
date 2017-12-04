@@ -87,3 +87,11 @@ func (a *MockAssociation) Replace(values ...interface{}) *ExecWrapper {
 
 	return &ExecWrapper{association: a, expectation: expectation}
 }
+
+// Count wraps gorm.Association.Count
+func (a *MockAssociation) Count() *QueryWrapper {
+	a.noopAssociation.Count()
+	expectation := &SqlmockQueryExpectation{parent: a.parent}
+
+	return &QueryWrapper{association: a, expectation: expectation}
+}

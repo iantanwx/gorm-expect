@@ -694,3 +694,20 @@ func TestAssociationModeReplace(t *testing.T) {
 	assert.Nil(t, expect.AssertExpectations())
 	assert.Equal(t, 1, len(user.Emails))
 }
+
+func TestAssociationModeCount(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user := User{Id: 1}
+
+	expect.Model(&user).Association("Emails").Count().Returns(5)
+	count := db.Model(&user).Association("Emails").Count()
+
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Equal(t, 5, count)
+}
