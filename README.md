@@ -22,39 +22,64 @@ go get -u github.com/iantanwx/gorm-expect
 
 ```
 type User struct {
-  gorm.Model
-  Name string
-  Emails []Email
-  Languages []Language `gorm:"many2many:user_languages"`
+	Id           int64
+	Age          int64
+	Name         string `sql:"size:255"`
+	Email        string
+	Birthday     *time.Time // Time
+	CreatedAt    time.Time  // CreatedAt: Time of record is created, will be insert automatically
+	UpdatedAt    time.Time  // UpdatedAt: Time of record is updated, will be updated automatically
+	Emails       []Email    // Embedded structs
+	CreditCard   CreditCard
+	Languages    []Language `gorm:"many2many:user_languages;"`
+	PasswordHash []byte
 }
 
 type UserRepository struct {
   db *gorm.DB
 }
 
-func (r *UserRepository) Find(limit int, offset int) ([]User, error) {
-  var users []User
-  err := r.DB.Limit(limit).Offset(offset).Find(&users).Error
-
-  return users, err
+func (r *UserRepository) FindByID(id int64) (User, error) {
+	user := User{Id: id}
+	err := r.db.Preload("Emails").Preload("CreditCard").Preload("Languages").Find(&user).Error
+	return user, err
 }
 
-func TestUserRepoFind(t *testing.T) {
-  db, expect, err := expecter.NewDefaultExpecter()
-  defer db.Close()
+func TestUserRepoPreload1(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
 
-  if err != nil {
-    t.Fatal(err)
-  }
+	if err != nil {
+		t.Fatal(err)
+	}
 
-  repo := &UserRepository{db}
+	repo := &UserRepository{db}
 
-  in := []User{}
-  out := User{Name: "my_name"}
+	// has one
+	creditCard := CreditCard{Number: "12345678"}
+	// has many
+	email := []Email{
+		Email{Email: "fake_user@live.com"},
+		Email{Email: "fake_user@gmail.com"},
+	}
+	// many to many
+	languages := []Language{
+		Language{Name: "EN"},
+		Language{Name: "ZH"},
+	}
 
-  expect.Find(&in).Returns(out)
-  user, err := repo.Find(1, 0)
+	expected := User{
+		Id:         1,
+		Name:       "my_name",
+		CreditCard: creditCard,
+		Emails:     email,
+		Languages:  languages,
+	}
 
-  if err != nil {
-  }
+	expect.Preload("Emails").Preload("CreditCard").Preload("Languages").Find(&User{Id: 1}).Returns(expected)
+	actual, err := repo.FindByID(1)
+
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
 }
