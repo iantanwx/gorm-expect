@@ -95,6 +95,18 @@ func (h *Expecter) Create(model interface{}) ExecExpectation {
 
 /* READ */
 
+// Limit sets limit parameter on query
+func (h *Expecter) Limit(limit int) *Expecter {
+	h.gorm = h.gorm.Limit(limit)
+	return h
+}
+
+// Offset sets offset parameter on query
+func (h *Expecter) Offset(offset int) *Expecter {
+	h.gorm = h.gorm.Offset(offset)
+	return h
+}
+
 // Where sets a condition
 func (h *Expecter) Where(query interface{}, args ...interface{}) *Expecter {
 	h.gorm = h.gorm.Where(query, args...)

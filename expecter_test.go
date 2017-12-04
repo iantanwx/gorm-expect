@@ -518,7 +518,7 @@ func TestUserRepoFind(t *testing.T) {
 
 	expected := []User{User{Name: "my_name"}}
 
-	expect.Find(&[]User{}).Returns(expected)
+	expect.Debug().Limit(1).Offset(0).Find(&[]User{}).Returns(expected)
 	users, err := repo.Find(1, 0)
 
 	assert.Nil(t, err)
