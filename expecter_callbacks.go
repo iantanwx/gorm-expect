@@ -84,6 +84,11 @@ func recordExecCallback(scope *gorm.Scope) {
 		argsMatches := re.FindAllStringSubmatch(stmt.sql, -1)
 		argsMatchesIndex := re.FindAllStringSubmatchIndex(stmt.sql, -1)
 
+		if len(argsMatches) <= 1 {
+			recorder.Record(stmt, true)
+			return
+		}
+
 		// split up the previous, non-permissions regex. we want to disregard
 		// order of arguments. before and after represent the substrings that
 		// are not SQL arguments

@@ -27,7 +27,7 @@ type User struct {
 }
 
 type CreditCard struct {
-	ID        int8
+	ID        int
 	Number    string
 	UserId    sql.NullInt64
 	CreatedAt time.Time `sql:"not null"`
@@ -630,6 +630,25 @@ func TestAssociationModeAppend(t *testing.T) {
 
 	expect.Model(&user1).Debug().Association("Emails").Append(emails).WillSucceed(1, 1).Returns(expected)
 	db.Model(&user2).Association("Emails").Append(emails)
+
+	assert.Nil(t, expect.AssertExpectations())
+}
+
+func TestAssociationModeDelete(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	emails := []Email{Email{UserId: 1, Email: "uhznij@liamg.moc"}}
+	user1 := User{Id: 1, Name: "jinzhu"}
+	user2 := User{Id: 1, Name: "jinzhu"}
+	// expected := User{Id: 1, Name: "jinzhu"}
+
+	expect.Model(&user1).Debug().Association("Emails").Delete(emails).WillSucceed(1, 1)
+	db.Model(&user2).Association("Emails").Delete(emails)
 
 	assert.Nil(t, expect.AssertExpectations())
 }
