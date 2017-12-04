@@ -645,12 +645,12 @@ func TestAssociationModeDelete(t *testing.T) {
 	emails := []Email{Email{UserId: 1, Email: "uhznij@liamg.moc"}}
 	user1 := User{Id: 1, Name: "jinzhu"}
 	user2 := User{Id: 1, Name: "jinzhu"}
-	// expected := User{Id: 1, Name: "jinzhu"}
 
 	expect.Model(&user1).Association("Emails").Delete(emails).WillSucceed(1, 1)
 	db.Model(&user2).Association("Emails").Delete(emails)
 
 	assert.Nil(t, expect.AssertExpectations())
+	assert.Nil(t, user2.Emails)
 }
 
 func TestAssociationModeClear(t *testing.T) {
