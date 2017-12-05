@@ -28,6 +28,9 @@ func init() {
 type Adapter interface {
 	ExpectQuery(stmt Stmt) Queryer
 	ExpectExec(stmt Stmt) Execer
+	ExpectBegin() TxBeginner
+	ExpectCommit() TxCommitter
+	ExpectRollback() TxRollback
 	AssertExpectations() error
 }
 
@@ -62,6 +65,26 @@ func (a *SqlmockAdapter) ExpectQuery(query Stmt) Queryer {
 func (a *SqlmockAdapter) ExpectExec(exec Stmt) Execer {
 	expectation := a.mocker.ExpectExec(exec.sql)
 	return &SqlmockExecer{exec: expectation}
+}
+
+// ExpectBegin mocks a sql transaction
+func (a *SqlmockAdapter) ExpectBegin() TxBeginner {
+	expectation := a.mocker.ExpectBegin()
+	return &SqlmockTxBeginner{begin: expectation}
+}
+
+// ExpectCommit mocks committing a sql transaction
+func (a *SqlmockAdapter) ExpectCommit() TxCommitter {
+	expectation := a.mocker.ExpectCommit()
+
+	return &SqlmockTxCommitter{commit: expectation}
+}
+
+// ExpectRollback mocks rolling back a sql
+func (a *SqlmockAdapter) ExpectRollback() TxRollback {
+	expectation := a.mocker.ExpectRollback()
+
+	return &SqlmockTxRollback{rollback: expectation}
 }
 
 // AssertExpectations asserts that _all_ expectations for a test have been met
@@ -143,4 +166,52 @@ func (e *SqlmockExecer) WillFail(err error) Execer {
 func (e *SqlmockExecer) Args(args ...driver.Value) Execer {
 	expectation := e.exec.WithArgs(args...)
 	return &SqlmockExecer{exec: expectation}
+}
+
+// TxBeginner is an interface to underlying sql.Driver mock implementation
+type TxBeginner interface {
+	WillFail(err error) TxBeginner
+}
+
+// SqlmockTxBeginner implements TxBeginner
+type SqlmockTxBeginner struct {
+	begin *sqlmock.ExpectedBegin
+}
+
+// WillFail implements TxBeginner
+func (b *SqlmockTxBeginner) WillFail(err error) TxBeginner {
+	expectation := b.begin.WillReturnError(err)
+	return &SqlmockTxBeginner{begin: expectation}
+}
+
+// TxRollback is an interface to underlying mock implementation's tx.Rollback
+type TxRollback interface {
+	WillFail(err error) TxRollback
+}
+
+// SqlmockTxCloser implement TxCloser
+type SqlmockTxRollback struct {
+	rollback *sqlmock.ExpectedRollback
+}
+
+// WillFail implements TxCloser
+func (c *SqlmockTxRollback) WillFail(err error) TxRollback {
+	expectation := c.rollback.WillReturnError(err)
+	return &SqlmockTxRollback{rollback: expectation}
+}
+
+// TxCommitter is an interface to underlying mock implementation's tx.Commit
+type TxCommitter interface {
+	WillFail(err error) TxCommitter
+}
+
+// SqlmockTxCommitter implements TxCommitter
+type SqlmockTxCommitter struct {
+	commit *sqlmock.ExpectedCommit
+}
+
+// WillFail implements TxCommitter
+func (c *SqlmockTxCommitter) WillFail(err error) TxCommitter {
+	expectation := c.commit.WillReturnError(err)
+	return &SqlmockTxCommitter{commit: expectation}
 }

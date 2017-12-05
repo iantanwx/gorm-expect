@@ -85,6 +85,21 @@ func (h *Expecter) Model(model interface{}) *Expecter {
 	return h
 }
 
+// Begin starts a mock transaction
+func (h *Expecter) Begin() TxBeginner {
+	return h.adapter.ExpectBegin()
+}
+
+// Commit commits a mock transaction
+func (h *Expecter) Commit() TxCommitter {
+	return h.adapter.ExpectCommit()
+}
+
+// Rollback rollsback a mock transaction
+func (h *Expecter) Rollback() TxRollback {
+	return h.adapter.ExpectRollback()
+}
+
 /* CREATE */
 
 // Create mocks insertion of a model into the DB
