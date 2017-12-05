@@ -3,7 +3,9 @@
 A Go database testing library for use with [`gorm`](https://github.com/jinzhu/gorm) that doesn't involve a lot
 of pain.
 
+
 [![GoDoc](https://godoc.org/github.com/iantanwx/gorm-expect?status.svg)](https://godoc.org/github.com/iantanwx/gorm-expect)
+[![wercker status](https://app.wercker.com/status/37511401d9bd809ec0a8c6b3a911aa24/s/master "wercker status")](https://app.wercker.com/project/byKey/37511401d9bd809ec0a8c6b3a911aa24)
 
 ## Why
 
