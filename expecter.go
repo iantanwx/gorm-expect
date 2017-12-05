@@ -107,6 +107,12 @@ func (h *Expecter) Offset(offset int) *Expecter {
 	return h
 }
 
+// Assign will merge the given struct into the scope's value
+func (h *Expecter) Assign(attrs ...interface{}) *Expecter {
+	h.gorm = h.gorm.Assign(attrs...)
+	return h
+}
+
 // Where sets a condition
 func (h *Expecter) Where(query interface{}, args ...interface{}) *Expecter {
 	h.gorm = h.gorm.Where(query, args...)
