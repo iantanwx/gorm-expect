@@ -188,6 +188,8 @@ func (c *NoopConnection) Query(query string, args []driver.Value) (driver.Rows, 
 	return &NoopRows{}, nil
 }
 
+// ReturnNilRows instructs the noop driver to return empty rows for all queries
+// until returnNilRows is set to false
 func (c *NoopConnection) ReturnNilRows() {
 	c.returnNilRows = true
 }

@@ -73,7 +73,7 @@ func (h *Expecter) AssertExpectations() error {
 	return h.adapter.AssertExpectations()
 }
 
-// Start Association mode
+// Association starts association mode
 func (h *Expecter) Association(column string) *MockAssociation {
 	gormAssociation := h.gorm.Association(column)
 	return NewMockAssociation(column, gormAssociation, h)
