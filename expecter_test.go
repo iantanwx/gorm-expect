@@ -15,6 +15,7 @@ import (
 type User struct {
 	Id           int64
 	Age          int64
+	Company      string `sql:"default:'Tech in Asia'"`
 	Name         string `sql:"size:255"`
 	Email        string
 	Birthday     *time.Time // Time
@@ -518,7 +519,7 @@ func TestUserRepoFind(t *testing.T) {
 
 	expected := []User{User{Name: "my_name"}}
 
-	expect.Debug().Limit(1).Offset(0).Find(&[]User{}).Returns(expected)
+	expect.Limit(1).Offset(0).Find(&[]User{}).Returns(expected)
 	users, err := repo.Find(1, 0)
 
 	assert.Nil(t, err)
@@ -626,9 +627,9 @@ func TestAssociationModeAppend(t *testing.T) {
 	user1 := User{Id: 1, Name: "jinzhu"}
 	user2 := User{Id: 1, Name: "jinzhu"}
 	emails := []Email{Email{UserId: 1, Email: "uhznij@liamg.moc"}}
-	expected := User{Id: 1, Name: "jinzhu", Emails: emails}
+	// expected := User{Id: 1, Name: "jinzhu", Emails: emails}
 
-	expect.Model(&user1).Debug().Association("Emails").Append(emails).WillSucceed(1, 1).Returns(expected)
+	expect.Model(&user1).Association("Emails").Append(emails).WillSucceed(1, 1)
 	db.Model(&user2).Association("Emails").Append(emails)
 
 	assert.Nil(t, expect.AssertExpectations())
