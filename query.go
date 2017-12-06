@@ -51,11 +51,8 @@ func (q *SqlmockQueryExpectation) Returns(out interface{}) *Expecter {
 			if subQuery.preload != "" {
 				if field, ok := scope.FieldByName(subQuery.preload); ok {
 					expectation := q.parent.adapter.ExpectQuery(subQuery)
-					rows, hasRows := q.getRelationRows(outVal.FieldByName(subQuery.preload), subQuery.preload, field.Relationship)
-
-					if hasRows {
-						expectation.Returns(rows)
-					}
+					rows := q.getRelationRows(outVal.FieldByName(subQuery.preload), subQuery.preload, field.Relationship)
+					expectation.Returns(rows)
 				}
 			}
 		}
@@ -66,16 +63,11 @@ func (q *SqlmockQueryExpectation) Returns(out interface{}) *Expecter {
 	return q.parent
 }
 
-func (q *SqlmockQueryExpectation) getRelationRows(rVal reflect.Value, fieldName string, relation *gorm.Relationship) (*sqlmock.Rows, bool) {
+func (q *SqlmockQueryExpectation) getRelationRows(rVal reflect.Value, fieldName string, relation *gorm.Relationship) *sqlmock.Rows {
 	var (
 		rows    *sqlmock.Rows
 		columns []string
 	)
-
-	// we need to check for zero values
-	if reflect.DeepEqual(rVal.Interface(), reflect.New(rVal.Type()).Elem().Interface()) {
-		return nil, false
-	}
 
 	switch relation.Kind {
 	case "has_one":
@@ -89,11 +81,15 @@ func (q *SqlmockQueryExpectation) getRelationRows(rVal reflect.Value, fieldName 
 
 		rows = sqlmock.NewRows(columns)
 
+		if reflect.DeepEqual(rVal.Interface(), reflect.New(rVal.Type()).Elem().Interface()) {
+			return rows
+		}
+
 		// we don't have a slice
 		row := getRowForFields(scope.Fields())
 		rows = rows.AddRow(row...)
 
-		return rows, true
+		return rows
 	case "has_many":
 		elem := rVal.Type().Elem()
 		scope := &gorm.Scope{Value: reflect.New(elem).Interface()}
@@ -106,6 +102,10 @@ func (q *SqlmockQueryExpectation) getRelationRows(rVal reflect.Value, fieldName 
 
 		rows = sqlmock.NewRows(columns)
 
+		if reflect.DeepEqual(rVal.Interface(), reflect.New(rVal.Type()).Elem().Interface()) {
+			return rows
+		}
+
 		if rVal.Len() > 0 {
 			for i := 0; i < rVal.Len(); i++ {
 				scope := &gorm.Scope{Value: rVal.Index(i).Interface()}
@@ -113,10 +113,10 @@ func (q *SqlmockQueryExpectation) getRelationRows(rVal reflect.Value, fieldName 
 				rows = rows.AddRow(row...)
 			}
 
-			return rows, true
+			return rows
 		}
 
-		return nil, false
+		return rows
 	case "many_to_many":
 		elem := rVal.Type().Elem()
 		scope := &gorm.Scope{Value: reflect.New(elem).Interface()}
@@ -138,6 +138,11 @@ func (q *SqlmockQueryExpectation) getRelationRows(rVal reflect.Value, fieldName 
 
 		rows = sqlmock.NewRows(columns)
 
+		// we need to check for zero values
+		if reflect.DeepEqual(rVal.Interface(), reflect.New(rVal.Type()).Elem().Interface()) {
+			return rows
+		}
+
 		// in this case we definitely have a slice
 		if rVal.Len() > 0 {
 			for i := 0; i < rVal.Len(); i++ {
@@ -155,12 +160,12 @@ func (q *SqlmockQueryExpectation) getRelationRows(rVal reflect.Value, fieldName 
 				rows = rows.AddRow(row...)
 			}
 
-			return rows, true
+			return rows
 		}
 
-		return nil, false
+		return rows
 	default:
-		return nil, false
+		return nil
 	}
 }
 

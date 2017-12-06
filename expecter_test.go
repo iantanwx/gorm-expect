@@ -266,6 +266,27 @@ func TestPreloadMany2Many(t *testing.T) {
 	}
 }
 
+func TestPreloadMany2ManyEmpty(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	languages := []Language{}
+	user := User{Id: 1, Languages: languages}
+
+	expect.Debug().Preload("Languages").Find(&user).Returns(user)
+	err = db.Preload("Languages").Find(&user).Error
+
+	if err := expect.AssertExpectations(); err != nil {
+		t.Error(err)
+	}
+
+	assert.Nil(t, err)
+}
+
 func TestPreloadMultiple(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
