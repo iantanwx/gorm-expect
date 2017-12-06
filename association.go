@@ -1,7 +1,22 @@
 package gormexpect
 
 import (
+	"fmt"
+
 	"github.com/jinzhu/gorm"
+)
+
+// Operation represents the Association method being called. Behaviour
+// internally changes depending on the operation.
+type Operation int
+
+const (
+	Find Operation = iota
+	Append
+	Replace
+	Delete
+	Count
+	Clear
 )
 
 // MockAssociation mirros gorm.Association
@@ -9,6 +24,7 @@ type MockAssociation struct {
 	column          string
 	parent          *Expecter
 	noopAssociation *gorm.Association
+	operation       Operation
 }
 
 // QueryWrapper is just a wrapper over QueryExpectation. This is necessary to
@@ -32,20 +48,20 @@ type ExecWrapper struct {
 
 // WillSucceed has the same signature as ExecExpectation.WillSucceed. It is
 // only returned from Append() and Replace().
-func (w *ExecWrapper) WillSucceed(lastReturnID, rowsAffected int64) *QueryWrapper {
-	// execute INSERT first
-	w.expectation.WillSucceed(lastReturnID, rowsAffected)
-
-	// force the second query becuase we don't record it
-	value := w.association.parent.gorm.Value
-	expectation := w.association.parent.Find(&value)
-
-	return &QueryWrapper{association: w.association, expectation: expectation}
+func (w *ExecWrapper) WillSucceed(lastReturnID, rowsAffected int64) {
+	switch w.association.operation {
+	case Replace:
+		handleReplace(w.association, true)
+	case Append:
+		handleAppend(w.association)
+	default:
+		return
+	}
 }
 
 // NewMockAssociation returns a MockAssociation
 func NewMockAssociation(c string, a *gorm.Association, e *Expecter) *MockAssociation {
-	return &MockAssociation{c, e, a}
+	return &MockAssociation{column: c, parent: e, noopAssociation: a}
 }
 
 // Find wraps gorm.Association
@@ -58,6 +74,7 @@ func (a *MockAssociation) Find(value interface{}) *QueryWrapper {
 
 // Append wraps gorm.Association.Append
 func (a *MockAssociation) Append(values ...interface{}) *ExecWrapper {
+	a.operation = Append
 	a.noopAssociation.Append(values...)
 	expectation := &SqlmockExecExpectation{parent: a.parent}
 
@@ -82,6 +99,8 @@ func (a *MockAssociation) Clear() *ExecWrapper {
 
 // Replace wraps gorm.Association.Replace
 func (a *MockAssociation) Replace(values ...interface{}) *ExecWrapper {
+	a.operation = Replace
+	a.parent.noop.ReturnExecResult(1, 1)
 	a.noopAssociation.Replace(values...)
 	expectation := &SqlmockExecExpectation{parent: a.parent}
 
@@ -94,4 +113,50 @@ func (a *MockAssociation) Count() *QueryWrapper {
 	expectation := &SqlmockQueryExpectation{parent: a.parent}
 
 	return &QueryWrapper{association: a, expectation: expectation}
+}
+
+// these two operations generate unusual queries and need to be specially
+// handled manually
+
+func handleAppend(association *MockAssociation) {
+	expecter := association.parent
+	adapter := association.parent.adapter
+	value := association.parent.gorm.Value
+	stmts := association.parent.recorder.stmts
+
+	for i, stmt := range stmts {
+		switch i {
+		case 0:
+			adapter.ExpectExec(stmt).WillSucceed(1, 1)
+		case 1:
+			newExpecter := expecter.clone()
+			newExpecter.recorder.stmts = []Stmt{stmt}
+			newExpecter.Find(&value).Returns(value)
+		}
+	}
+}
+
+func handleReplace(association *MockAssociation, isSuccessful bool) {
+	expecter := association.parent
+	stmts := association.parent.recorder.stmts
+	adapter := association.parent.adapter
+	value := association.parent.gorm.Value
+
+	for i, stmt := range stmts {
+		switch i {
+		// INSERT
+		case 0:
+			adapter.ExpectExec(stmt).WillSucceed(1, 1)
+		// SELECT
+		case 1:
+			newExpecter := expecter.clone()
+			newExpecter.recorder.stmts = []Stmt{stmt}
+			newExpecter.Find(&value).Returns(value)
+		// UPDATE
+		case 2:
+			adapter.ExpectExec(stmt).WillSucceed(1, 1)
+		default:
+			panic(fmt.Sprintf("Replace should not generate more than three SQL statements, got %d", len(stmts)))
+		}
+	}
 }
