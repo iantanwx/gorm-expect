@@ -43,16 +43,19 @@ func (d *NoopDriver) Open(dsn string) (driver.Conn, error) {
 }
 
 // NoopResult is a noop struct that satisfies sql.Result
-type NoopResult struct{}
+type NoopResult struct {
+	lastInsertID int64
+	rowsAffected int64
+}
 
 // LastInsertId is a noop method for satisfying drive.Result
 func (r NoopResult) LastInsertId() (int64, error) {
-	return 0, nil
+	return r.lastInsertID, nil
 }
 
 // RowsAffected is a noop method for satisfying drive.Result
 func (r NoopResult) RowsAffected() (int64, error) {
-	return 0, nil
+	return r.rowsAffected, nil
 }
 
 // NoopRows implements driver.Rows
@@ -115,7 +118,7 @@ func NewNoopDB() (gorm.SQLCommon, NoopController, error) {
 	dsn := fmt.Sprintf("noop_db_%d", pool.counter)
 	pool.counter++
 
-	noop := &NoopConnection{dsn: dsn, drv: pool}
+	noop := &NoopConnection{nextExecResult: []int64{0, 0}, dsn: dsn, drv: pool}
 	pool.conns[dsn] = noop
 	pool.Unlock()
 
@@ -129,10 +132,11 @@ func NewNoopDB() (gorm.SQLCommon, NoopController, error) {
 // require it for generating queries. It is necessary because eager loading
 // will fail if any operation returns an error
 type NoopConnection struct {
-	dsn           string
-	drv           *NoopDriver
-	opened        int
-	returnNilRows bool
+	dsn            string
+	drv            *NoopDriver
+	opened         int
+	returnNilRows  bool
+	nextExecResult []int64
 }
 
 func (c *NoopConnection) open() (*sql.DB, error) {
@@ -161,6 +165,7 @@ func (c *NoopConnection) Close() error {
 // NoopController provides a crude interface for manipulating NoopConnection
 type NoopController interface {
 	ReturnNilRows()
+	ReturnExecResult(lastReturnedID, rowsAffected int64)
 }
 
 // Begin implements sql/driver.Conn
@@ -170,7 +175,11 @@ func (c *NoopConnection) Begin() (driver.Tx, error) {
 
 // Exec implements sql/driver.Conn
 func (c *NoopConnection) Exec(query string, args []driver.Value) (driver.Result, error) {
-	return NoopResult{}, nil
+	defer func() {
+		c.nextExecResult = []int64{0, 0}
+	}()
+
+	return NoopResult{c.nextExecResult[0], c.nextExecResult[1]}, nil
 }
 
 // Prepare implements sql/driver.Conn
@@ -192,6 +201,12 @@ func (c *NoopConnection) Query(query string, args []driver.Value) (driver.Rows, 
 // until returnNilRows is set to false
 func (c *NoopConnection) ReturnNilRows() {
 	c.returnNilRows = true
+}
+
+// ReturnExecResult will cause the driver to return the passed values for the
+// next call to Exec. It goes back to the default of 0, 0 thereafter.
+func (c *NoopConnection) ReturnExecResult(lastReturnedID, rowsAffected int64) {
+	c.nextExecResult = []int64{lastReturnedID, rowsAffected}
 }
 
 // Commit implements sql/driver.Conn
