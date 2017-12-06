@@ -1,5 +1,9 @@
 package gormexpect
 
+import (
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
+)
+
 // ExecExpectation is returned by Expecter. It exposes a narrower API than
 // Execer to limit footguns.
 type ExecExpectation interface {
@@ -12,11 +16,19 @@ type SqlmockExecExpectation struct {
 	parent *Expecter
 }
 
-// WillSucceed sets the exec to be successful with the passed ID and rows
-// affected
+// WillSucceed sets the exec to be successful with the passed ID and rows.
+// This method may also call Query, if there are default columns.
 func (e *SqlmockExecExpectation) WillSucceed(lastReturnedID, rowsAffected int64) ExecExpectation {
-	query, _ := e.parent.recorder.GetFirst()
-	e.parent.adapter.ExpectExec(query).WillSucceed(lastReturnedID, rowsAffected)
+	exec, _ := e.parent.recorder.GetFirst()
+	e.parent.adapter.ExpectExec(exec).WillSucceed(lastReturnedID, rowsAffected)
+
+	// for now, just return empty row
+	if len(e.parent.recorder.stmts) > 1 {
+		query := e.parent.recorder.stmts[1]
+		if cols, ok := e.parent.gorm.Get("gorm:blank_columns_with_default_value"); ok {
+			e.parent.adapter.ExpectQuery(query).Returns(sqlmock.NewRows(cols.([]string)))
+		}
+	}
 
 	return e
 }

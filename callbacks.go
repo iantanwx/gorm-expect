@@ -30,6 +30,7 @@ func (r *Recorder) GetFirst() (Stmt, bool) {
 	defer func() {
 		if len(r.stmts) > 1 {
 			r.stmts = r.stmts[1:]
+			return
 		}
 
 		r.stmts = []Stmt{}
@@ -115,6 +116,11 @@ func recordExecCallback(scope *gorm.Scope) {
 
 		recorder.Record(stmt, false)
 		return
+	}
+
+	if blankColumns, ok := scope.InstanceGet("gorm:blank_columns_with_default_value"); ok {
+		// use this hack to retrieve our columns later
+		scope.Set("gorm:blank_columns_with_default_value", blankColumns)
 	}
 
 	// if there aren't any arguments, we just record the SQL as-is.
