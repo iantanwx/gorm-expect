@@ -30,9 +30,11 @@ type SqlmockQueryExpectation struct {
 func (q *SqlmockQueryExpectation) Returns(out interface{}) *Expecter {
 	scope := (&gorm.Scope{}).New(out)
 	q.scope = scope
+
 	if out == nil {
 		q.parent.noop.ReturnNilRows()
 	}
+
 	// call deferred queries, since we now know the expected out value
 	q.callMethods()
 

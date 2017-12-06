@@ -10,8 +10,9 @@ import (
 
 // Recorder satisfies the logger interface
 type Recorder struct {
-	stmts   []Stmt
-	preload []Preload // store it on Recorder
+	blankColumns []string
+	stmts        []Stmt
+	preload      []Preload // store it on Recorder
 }
 
 // Record records a Stmt for use when SQL is finally executed
@@ -74,6 +75,11 @@ func recordExecCallback(scope *gorm.Scope) {
 		args: scope.SQLVars,
 	}
 
+	if blankColumns, ok := scope.InstanceGet("gorm:blank_columns_with_default_value"); ok {
+		// use this hack to retrieve our columns later
+		recorder.blankColumns = blankColumns.([]string)
+	}
+
 	// find the arguments and give them a more permissive regex
 	re := regexp.MustCompile(` "[a-zA-Z_]+" = \?,?`)
 
@@ -116,11 +122,6 @@ func recordExecCallback(scope *gorm.Scope) {
 
 		recorder.Record(stmt, false)
 		return
-	}
-
-	if blankColumns, ok := scope.InstanceGet("gorm:blank_columns_with_default_value"); ok {
-		// use this hack to retrieve our columns later
-		scope.Set("gorm:blank_columns_with_default_value", blankColumns)
 	}
 
 	// if there aren't any arguments, we just record the SQL as-is.

@@ -23,10 +23,11 @@ func (e *SqlmockExecExpectation) WillSucceed(lastReturnedID, rowsAffected int64)
 	e.parent.adapter.ExpectExec(exec).WillSucceed(lastReturnedID, rowsAffected)
 
 	// for now, just return empty row
-	if len(e.parent.recorder.stmts) > 1 {
-		query := e.parent.recorder.stmts[1]
-		if cols, ok := e.parent.gorm.Get("gorm:blank_columns_with_default_value"); ok {
-			e.parent.adapter.ExpectQuery(query).Returns(sqlmock.NewRows(cols.([]string)))
+	if len(e.parent.recorder.stmts) >= 1 {
+		query := e.parent.recorder.stmts[0]
+
+		if len(e.parent.recorder.blankColumns) >= 1 {
+			e.parent.adapter.ExpectQuery(query).Returns(sqlmock.NewRows(e.parent.recorder.blankColumns))
 		}
 	}
 

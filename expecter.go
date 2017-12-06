@@ -251,7 +251,7 @@ func (h *Expecter) clone() *Expecter {
 
 func (h *Expecter) reset() {
 	h.callmap = make(map[string][]interface{})
-	h.recorder = &Recorder{}
+	h.recorder.stmts = []Stmt{}
 }
 
 // query returns a SqlmockQuery with the current DB state
