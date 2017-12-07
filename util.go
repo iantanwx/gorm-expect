@@ -3,10 +3,36 @@ package gormexpect
 import (
 	"database/sql/driver"
 	"reflect"
+	"regexp"
+	"strings"
 	"unsafe"
 
 	"github.com/jinzhu/gorm"
 )
+
+func parseUpdateColumns(stmt string) ([]string, []string) {
+	re := regexp.MustCompile(`SET (.*)( ?:WHERE)?`)
+
+	match := re.FindAllStringSubmatch(stmt, -1)
+
+	if len(match) == 0 {
+		return nil, nil
+	}
+
+	index := re.FindAllStringSubmatchIndex(stmt, -1)
+
+	before := stmt[0:index[0][2]]
+	after := stmt[index[0][3]:]
+
+	colsString := match[0][1]
+	cols := strings.Split(colsString, ",")
+
+	for i, col := range cols {
+		cols[i] = strings.TrimSpace(col)
+	}
+
+	return []string{before, after}, cols
+}
 
 // indirect returns the actual value if the given value is a pointer
 func indirect(reflectValue reflect.Value) reflect.Value {

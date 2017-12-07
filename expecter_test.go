@@ -377,9 +377,10 @@ func TestUpdate(t *testing.T) {
 	user := User{Name: "jinzhu"}
 
 	expect.Model(&user).Update("name", newName).WillSucceed(1, 1)
-	db.Model(&user).Update("name", newName)
+	err = db.Model(&user).Update("name", newName).Error
 
 	assert.Nil(t, expect.AssertExpectations())
+	assert.NoError(t, err)
 	assert.Equal(t, newName, user.Name)
 }
 
@@ -435,6 +436,25 @@ func TestFirstOrCreateSuccess(t *testing.T) {
 	expect.FirstOrCreate(&user, nil).WillSucceed(1, 1)
 	db.FirstOrCreate(&user)
 
+	assert.Nil(t, expect.AssertExpectations())
+}
+
+func TestFirstOrCreateAssign(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer func() {
+		db.Close()
+	}()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user := User{Id: 1, Name: "jinzhu", Age: 18}
+	update := User{Email: "somebody@gmail.com"}
+
+	expect.Assign(update).FirstOrCreate(&user, user).WillSucceed(1, 1)
+
+	assert.NoError(t, db.Assign(update).FirstOrCreate(&user).Error)
 	assert.Nil(t, expect.AssertExpectations())
 }
 

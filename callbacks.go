@@ -80,43 +80,29 @@ func recordExecCallback(scope *gorm.Scope) {
 		recorder.blankColumns = blankColumns.([]string)
 	}
 
-	// find the arguments and give them a more permissive regex
-	re := regexp.MustCompile(` "[a-zA-Z_]+" = \?,?`)
+	strs, cols := parseUpdateColumns(stmt.sql)
 
-	// we need to check if the SQL to be recorded has arguments. If it does,
-	// then we generate a more permissive statement. This is becuase
-	// internally, GORM uses a map to store these arguments; map iteration
-	// order is _not_ guaranteed in Go.
-	if re.MatchString(stmt.sql) {
-		argsMatches := re.FindAllStringSubmatch(stmt.sql, -1)
-		argsMatchesIndex := re.FindAllStringSubmatchIndex(stmt.sql, -1)
-
-		if len(argsMatches) <= 1 {
-			recorder.Record(stmt, true)
-			return
-		}
-
-		// split up the previous, non-permissions regex. we want to disregard
-		// order of arguments. before and after represent the substrings that
-		// are not SQL arguments
-		before := stmt.sql[0:argsMatchesIndex[0][0]]
-		after := stmt.sql[argsMatchesIndex[len(argsMatchesIndex)-1][1]:]
-
+	if len(cols) > 1 {
 		// we generate a better regex
 		newRegexp := bytes.NewBufferString("")
-		newRegexp.WriteString(before)
-		newRegexp.WriteString(" (")
+		newRegexp.WriteString(strs[0])
+		newRegexp.WriteString("(")
 
-		for i, token := range argsMatches {
-			if i == len(argsMatches)-1 {
-				newRegexp.WriteString(fmt.Sprintf("%s)*", token[0]))
+		for i, col := range cols {
+			if i == 0 {
+				newRegexp.WriteString(fmt.Sprintf("%s,?|", col))
 				continue
 			}
 
-			newRegexp.WriteString(fmt.Sprintf("%s|", token[0]))
+			if i == len(cols)-1 {
+				newRegexp.WriteString(fmt.Sprintf(" %s,?)*", col))
+				continue
+			}
+
+			newRegexp.WriteString(fmt.Sprintf(" %s,?|", col))
 		}
 
-		newRegexp.WriteString(after)
+		newRegexp.WriteString(strs[1])
 
 		stmt.sql = newRegexp.String()
 
@@ -124,7 +110,6 @@ func recordExecCallback(scope *gorm.Scope) {
 		return
 	}
 
-	// if there aren't any arguments, we just record the SQL as-is.
 	recorder.Record(stmt, true)
 }
 

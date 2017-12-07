@@ -5,6 +5,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/jinzhu/gorm"
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 // AdapterFactory is a generic interface for arbitrary adapters that satisfy
@@ -158,28 +159,42 @@ func (h *Expecter) First(out interface{}, where ...interface{}) QueryExpectation
 // If returns is nil, a not found error is set, and an ExecExpectation is
 // returned.
 func (h *Expecter) FirstOrCreate(out interface{}, returns interface{}, where ...interface{}) ExecExpectation {
-	var args []interface{}
-	args = append(args, out)
-	args = append(args, where...)
-
+	// not found
 	if returns == nil {
-		h.callmap["First"] = args
-		h.query().Returns(nil)
-		h.reset()
+		h.noop.ReturnNilRows()
+		h.gorm.FirstOrCreate(out)
 
-		return h.Create(out)
+		// return our empty row
+		query, _ := h.recorder.GetFirst()
+		h.adapter.ExpectQuery(query).Returns(sqlmock.NewRows([]string{}))
+
+		return h.exec()
 	}
-
-	outType := indirect(reflect.ValueOf(out)).Type()
-	returnsType := indirect(reflect.ValueOf(returns)).Type()
 
 	// check if out and returns are of the same type. The out and returns
 	// types should never differ.
+	outType := indirect(reflect.ValueOf(out)).Type()
+	returnsType := indirect(reflect.ValueOf(returns)).Type()
+
 	if outType != returnsType {
 		panic(spew.Sprintf("out and returns should be of the same type. Got %s and %s.\r\n", outType.String(), returnsType.String()))
 	}
 
-	h.First(out, where...).Returns(out)
+	// execute FirstOrCreate
+	h.gorm.FirstOrCreate(out)
+
+	// respond appropriately to the first query
+	query, _ := h.recorder.GetFirst()
+	clone := h.clone()
+	clone.recorder.stmts = []Stmt{query}
+	queryExpectation := SqlmockQueryExpectation{parent: clone, scope: (&gorm.Scope{}).New(returns)}
+	h.adapter.ExpectQuery(query).Returns(queryExpectation.getDestRows(returns))
+
+	// we need to deal with the UPDATE if there are more queries
+	if !h.recorder.IsEmpty() {
+		return h.exec()
+	}
+	// h.First(out, where...).Returns(out)
 	return nil
 }
 

@@ -24,10 +24,13 @@ func (e *SqlmockExecExpectation) WillSucceed(lastReturnedID, rowsAffected int64)
 
 	// for now, just return empty row
 	if len(e.parent.recorder.stmts) >= 1 {
+		// follow-up query
 		query := e.parent.recorder.stmts[0]
 
 		if len(e.parent.recorder.blankColumns) >= 1 {
 			e.parent.adapter.ExpectQuery(query).Returns(sqlmock.NewRows(e.parent.recorder.blankColumns))
+		} else if query.kind == "exec" {
+			e.parent.adapter.ExpectExec(query).WillSucceed(1, 1)
 		}
 	}
 
