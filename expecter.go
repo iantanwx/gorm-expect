@@ -3,6 +3,7 @@ package gormexpect
 import (
 	"reflect"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/jinzhu/gorm"
 )
 
@@ -161,18 +162,21 @@ func (h *Expecter) FirstOrCreate(out interface{}, returns interface{}, where ...
 	args = append(args, out)
 	args = append(args, where...)
 
-	outType := reflect.TypeOf(out)
-	returnsType := reflect.TypeOf(returns)
-
-	// check if out and returns are of the same type.
-	// if not, that means we need to trigger an unsuccessful First and return
-	// an ExecExpectation
-	if outType != returnsType {
+	if returns == nil {
 		h.callmap["First"] = args
 		h.query().Returns(nil)
 		h.reset()
 
 		return h.Create(out)
+	}
+
+	outType := indirect(reflect.ValueOf(out)).Type()
+	returnsType := indirect(reflect.ValueOf(returns)).Type()
+
+	// check if out and returns are of the same type. The out and returns
+	// types should never differ.
+	if outType != returnsType {
+		panic(spew.Sprintf("out and returns should be of the same type. Got %s and %s.\r\n", outType.String(), returnsType.String()))
 	}
 
 	h.First(out, where...).Returns(out)

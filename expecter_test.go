@@ -277,7 +277,7 @@ func TestPreloadMany2ManyEmpty(t *testing.T) {
 	languages := []Language{}
 	user := User{Id: 1, Languages: languages}
 
-	expect.Debug().Preload("Languages").Find(&user).Returns(user)
+	expect.Preload("Languages").Find(&user).Returns(user)
 	err = db.Preload("Languages").Find(&user).Error
 
 	if err := expect.AssertExpectations(); err != nil {
@@ -397,8 +397,27 @@ func TestUpdatesBasic(t *testing.T) {
 	expect.Model(&user).Updates(updated).WillSucceed(1, 1)
 	db.Model(&user).Updates(updated)
 
-	assert.Nil(t, expect.AssertExpectations())
 	assert.Equal(t, user.Age, updated.Age)
+	assert.Nil(t, expect.AssertExpectations())
+}
+
+func TestFirstOrCreateExisting(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer func() {
+		db.Close()
+	}()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user := User{Id: 1, Name: "jinzhu", Age: 18}
+
+	expect.Where("id = ?", 1).FirstOrCreate(&user, user)
+	err = db.Where("id = ?", 1).FirstOrCreate(&user).Error
+
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Nil(t, err)
 }
 
 func TestFirstOrCreateSuccess(t *testing.T) {
@@ -417,6 +436,21 @@ func TestFirstOrCreateSuccess(t *testing.T) {
 	db.FirstOrCreate(&user)
 
 	assert.Nil(t, expect.AssertExpectations())
+}
+
+func TestFirstOrCreateWrongTypes(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer func() {
+		db.Close()
+	}()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user := User{Id: 1, Name: "jinzhu", Age: 18}
+
+	assert.Panics(t, func() { expect.FirstOrCreate(&user, Email{}).WillSucceed(1, 1) })
 }
 
 func TestDeleteSuccess(t *testing.T) {
