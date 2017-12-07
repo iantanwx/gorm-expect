@@ -52,8 +52,8 @@ func (w *ExecWrapper) WillSucceed(lastReturnID, rowsAffected int64) {
 	switch w.association.operation {
 	case Replace:
 		handleReplace(w.association, true)
-	case Append:
-		handleAppend(w.association)
+	case Append, Clear, Delete:
+		handleAssociationGeneric(w.association)
 	default:
 		return
 	}
@@ -83,6 +83,7 @@ func (a *MockAssociation) Append(values ...interface{}) *ExecWrapper {
 
 // Delete wraps gorm.Association.Delete
 func (a *MockAssociation) Delete(values ...interface{}) *ExecWrapper {
+	a.operation = Delete
 	a.noopAssociation.Delete(values...)
 	expectation := &SqlmockExecExpectation{parent: a.parent}
 
@@ -91,6 +92,7 @@ func (a *MockAssociation) Delete(values ...interface{}) *ExecWrapper {
 
 // Clear wraps gorm.Association.Clear
 func (a *MockAssociation) Clear() *ExecWrapper {
+	a.operation = Replace
 	a.noopAssociation.Clear()
 	expectation := &SqlmockExecExpectation{parent: a.parent}
 
@@ -115,10 +117,7 @@ func (a *MockAssociation) Count() *QueryWrapper {
 	return &QueryWrapper{association: a, expectation: expectation}
 }
 
-// these two operations generate unusual queries and need to be specially
-// handled manually
-
-func handleAppend(association *MockAssociation) {
+func handleAssociationGeneric(association *MockAssociation) {
 	expecter := association.parent
 	adapter := association.parent.adapter
 	value := association.parent.gorm.Value
