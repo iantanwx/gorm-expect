@@ -156,8 +156,7 @@ func (e *SqlmockExecer) WillSucceed(lastReturnedID, rowsAffected int64) Execer {
 
 // WillFail simulates returning an Error from an unsuccessful exec
 func (e *SqlmockExecer) WillFail(err error) Execer {
-	result := sqlmock.NewErrorResult(err)
-	expectation := e.exec.WillReturnResult(result)
+	expectation := e.exec.WillReturnError(err)
 
 	return &SqlmockExecer{exec: expectation}
 }
