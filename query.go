@@ -49,6 +49,7 @@ func (q *SqlmockQueryExpectation) Returns(out interface{}) *Expecter {
 		// subqueries are preload
 		for _, subQuery := range q.parent.recorder.stmts[1:] {
 			if subQuery.preload != "" {
+				fmt.Printf("Preloading: %s\r\n", subQuery.preload)
 				if field, ok := scope.FieldByName(subQuery.preload); ok {
 					expectation := q.parent.adapter.ExpectQuery(subQuery)
 					rows := q.getRelationRows(outVal.FieldByName(subQuery.preload), subQuery.preload, field.Relationship)
