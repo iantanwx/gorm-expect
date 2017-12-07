@@ -318,13 +318,32 @@ func TestCreate(t *testing.T) {
 
 	user := User{Name: "jinzhu"}
 	expect.Create(&user).WillSucceed(1, 1)
-	rowsAffected := db.Create(&user).RowsAffected
+	db = db.Create(&user)
 
 	var expected int64 = 1
 
 	assert.Nil(t, expect.AssertExpectations())
-	assert.Equal(t, expected, rowsAffected)
+	assert.Nil(t, db.Error)
+	assert.Equal(t, expected, db.RowsAffected)
 	assert.Equal(t, expected, user.Id)
+}
+
+func TestCreateMany(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	names := []string{"jinzhu", "uhzni", "jack", "jill"}
+
+	for _, name := range names {
+		expect.Create(&User{Name: name}).WillSucceed(1, 1)
+		assert.Nil(t, db.Create(&User{Name: name}).Error)
+	}
+
+	assert.Nil(t, expect.AssertExpectations())
 }
 
 func TestCreateError(t *testing.T) {
