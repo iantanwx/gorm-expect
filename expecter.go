@@ -35,11 +35,16 @@ func NewDefaultExpecter() (*gorm.DB, *Expecter, error) {
 	gormNoop, _ := gorm.Open("sqlmock", noop)
 	gormNoop = gormNoop.Set("gorm:recorder", recorder)
 
+	gormNoop.Callback().Create().Before("gorm:before_create").Register("gorm_expect:skip_remaining", skipRemainingCallback)
 	gormNoop.Callback().Create().After("gorm:create").Register("gorm_expect:record_exec", recordExecCallback)
 	gormNoop.Callback().Query().Before("gorm:preload").Register("gorm_expect:record_preload", recordPreloadCallback)
+	gormNoop.Callback().Query().Before("gorm:before_query").Register("gorm_expect:skip_remaining", skipRemainingCallback)
 	gormNoop.Callback().Query().After("gorm:query").Register("gorm_expect:record_query", recordQueryCallback)
 	gormNoop.Callback().RowQuery().After("gorm:row_query").Register("gorm_expect:record_row_query", recordQueryCallback)
+	gormNoop.Callback().Update().Before("gorm:before_update").Register("gorm_expect:skip_remaining", skipRemainingCallback)
+	gormNoop.Callback().Update().Before("gorm:before_save").Register("gorm_expect:skip_remaining", skipRemainingCallback)
 	gormNoop.Callback().Update().After("gorm:update").Register("gorm_expect:record_update", recordExecCallback)
+	gormNoop.Callback().Delete().Before("gorm:before_delete").Register("gorm_expect:skip_remaining", skipRemainingCallback)
 	gormNoop.Callback().Delete().After("gorm:delete").Register("gorm_expect:record_delete", recordExecCallback)
 
 	return gormMock, &Expecter{
@@ -69,6 +74,14 @@ func (h *Expecter) Debug() *Expecter {
 	h.gorm = h.gorm.Debug()
 
 	return h
+}
+
+// Skip causes callbacks to be skipped
+func (h *Expecter) Skip() *Expecter {
+	clone := h.clone()
+	clone.gorm = clone.gorm.Set("gorm_expect:skip_remaining", true)
+
+	return clone
 }
 
 // AssertExpectations checks if all expected Querys and Execs were satisfied.
