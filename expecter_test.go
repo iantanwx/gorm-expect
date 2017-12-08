@@ -207,7 +207,7 @@ func TestNot(t *testing.T) {
 	user1 := User{}
 	user2 := User{}
 
-	expect.Not("name", "jinzhu").Debug().Find(&user1).Returns(User{Id: 1, Name: "not_jinzhu"})
+	expect.Not("name", "jinzhu").Find(&user1).Returns(User{Id: 1, Name: "not_jinzhu"})
 	db.Not("name", "jinzhu").Find(&user1)
 
 	// no pollution of conditions
@@ -543,7 +543,7 @@ func TestDeleteSuccess(t *testing.T) {
 	user := &User{Id: 1, Name: "jinzhu"}
 
 	expect.Delete(&user, "id = ?", 1).WillSucceed(1, 1)
-	result := db.Debug().Delete(&user, "id = ?", 1)
+	result := db.Delete(&user, "id = ?", 1)
 
 	assert.Nil(t, expect.AssertExpectations())
 	assert.Nil(t, result.Error)
