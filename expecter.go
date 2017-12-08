@@ -115,32 +115,38 @@ func (h *Expecter) Create(model interface{}) ExecExpectation {
 
 // Limit sets limit parameter on query
 func (h *Expecter) Limit(limit int) *Expecter {
-	h.gorm = h.gorm.Limit(limit)
-	return h
+	clone := h.clone()
+	clone.gorm = clone.gorm.Limit(limit)
+	return clone
 }
 
 // Offset sets offset parameter on query
 func (h *Expecter) Offset(offset int) *Expecter {
-	h.gorm = h.gorm.Offset(offset)
-	return h
+	clone := h.clone()
+	clone.gorm = clone.gorm.Offset(offset)
+	return clone
 }
 
 // Assign will merge the given struct into the scope's value
 func (h *Expecter) Assign(attrs ...interface{}) *Expecter {
-	h.gorm = h.gorm.Assign(attrs...)
-	return h
+	clone := h.clone()
+	clone.gorm = clone.gorm.Assign(attrs...)
+	return clone
 }
 
 // Where sets a WHERE condition(s)
 func (h *Expecter) Where(query interface{}, args ...interface{}) *Expecter {
-	h.gorm = h.gorm.Where(query, args...)
-	return h
+	clone := h.clone()
+	clone.gorm = clone.gorm.Where(query, args...)
+	return clone
 }
 
 // Not sets a NOT condition(s)
 func (h *Expecter) Not(query interface{}, args ...interface{}) *Expecter {
-	h.gorm = h.gorm.Not(query, args...)
-	return h
+	clone := h.clone()
+	clone.gorm = clone.gorm.Not(query, args...)
+
+	return clone
 }
 
 // Preload clones the expecter and sets a preload condition on gorm.DB
@@ -192,7 +198,7 @@ func (h *Expecter) FirstOrCreate(out interface{}, returns interface{}, where ...
 
 	// respond appropriately to the first query
 	query, _ := h.recorder.GetFirst()
-	clone := h.clone()
+	clone := h.new()
 	clone.recorder.stmts = []Stmt{query}
 	queryExpectation := SqlmockQueryExpectation{parent: clone, scope: (&gorm.Scope{}).New(returns)}
 	h.adapter.ExpectQuery(query).Returns(queryExpectation.getDestRows(returns))
@@ -266,7 +272,19 @@ func (h *Expecter) Delete(model interface{}, where ...interface{}) ExecExpectati
 	return h.exec()
 }
 
+// clone ensures that the original expecter does not have any unintended
+// conditions set by Where/Not etc. Recorder is _not_ cloned.
 func (h *Expecter) clone() *Expecter {
+	return &Expecter{
+		adapter:  h.adapter,
+		callmap:  make(map[string][]interface{}),
+		gorm:     h.gorm,
+		recorder: h.recorder,
+	}
+}
+
+// new resets the recorder instance as well.
+func (h *Expecter) new() *Expecter {
 	return &Expecter{
 		adapter:  h.adapter,
 		callmap:  make(map[string][]interface{}),

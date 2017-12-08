@@ -180,6 +180,28 @@ func TestFindSlice(t *testing.T) {
 	assert.Equal(t, out, in)
 }
 
+func TestNot(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	user1 := User{}
+	user2 := User{}
+
+	expect.Not("name", "jinzhu").Debug().Find(&user1).Returns(User{Id: 1, Name: "not_jinzhu"})
+	db.Not("name", "jinzhu").Find(&user1)
+
+	// no pollution of conditions
+	expect.Find(&user2).Returns(User{Id: 2, Name: "jinzhu"})
+	err = db.Find(&user2).Error
+
+	assert.Nil(t, expect.AssertExpectations())
+	assert.Nil(t, err)
+}
+
 func TestCount(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer func() {
