@@ -130,9 +130,15 @@ func (h *Expecter) Assign(attrs ...interface{}) *Expecter {
 	return h
 }
 
-// Where sets a condition
+// Where sets a WHERE condition(s)
 func (h *Expecter) Where(query interface{}, args ...interface{}) *Expecter {
 	h.gorm = h.gorm.Where(query, args...)
+	return h
+}
+
+// Not sets a NOT condition(s)
+func (h *Expecter) Not(query interface{}, args ...interface{}) *Expecter {
+	h.gorm = h.gorm.Not(query, args...)
 	return h
 }
 
