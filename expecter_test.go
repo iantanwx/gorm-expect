@@ -505,10 +505,11 @@ func TestDeleteSuccess(t *testing.T) {
 	user := &User{Id: 1, Name: "jinzhu"}
 
 	expect.Delete(&user, "id = ?", 1).WillSucceed(1, 1)
-	rowsAffected := db.Delete(&user, "id = ?", 1).RowsAffected
+	result := db.Debug().Delete(&user, "id = ?", 1)
 
 	assert.Nil(t, expect.AssertExpectations())
-	assert.Equal(t, int64(1), rowsAffected)
+	assert.Nil(t, result.Error)
+	assert.Equal(t, int64(1), result.RowsAffected)
 }
 
 func TestDeleteError(t *testing.T) {
@@ -528,6 +529,26 @@ func TestDeleteError(t *testing.T) {
 
 	assert.Nil(t, expect.AssertExpectations())
 	assert.Equal(t, int64(0), rowsAffected)
+}
+
+func TestSoftDelete(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer func() {
+		db.Close()
+	}()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// use Language because User doesn't have a soft delete field
+	language := Language{Name: "EN"}
+	language.ID = 1
+
+	expect.Delete(&language).WillSucceed(1, 1)
+	db.Delete(&language)
+
+	assert.Nil(t, expect.AssertExpectations())
 }
 
 func TestFirstOrInitNil(t *testing.T) {

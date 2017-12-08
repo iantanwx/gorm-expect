@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	expecter "github.com/iantanwx/gorm-expect"
+	"github.com/icrowley/fake"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,7 +36,6 @@ func TestAssociationModeAppend(t *testing.T) {
 	user1 := User{Id: 1, Name: "jinzhu"}
 	user2 := User{Id: 1, Name: "jinzhu"}
 	emails := []Email{Email{UserId: 1, Email: "uhznij@liamg.moc"}}
-	// expected := User{Id: 1, Name: "jinzhu", Emails: emails}
 
 	expect.Model(&user1).Association("Emails").Append(emails).WillSucceed(1, 1)
 	err = db.Model(&user2).Association("Emails").Append(emails).Error
@@ -62,6 +62,27 @@ func TestAssociationModeDelete(t *testing.T) {
 	assert.Nil(t, expect.AssertExpectations())
 	assert.Nil(t, err)
 	assert.Nil(t, user2.Emails)
+}
+
+func TestAssociationModeDeleteM2M(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	languages := []Language{}
+	for i := 0; i < 10; i++ {
+		language := Language{Name: fake.Language()}
+		language.ID = uint(i) + uint(1)
+		languages = append(languages, language)
+	}
+
+	expect.Model(&User{Id: 1}).Association("Languages").Delete(languages).WillSucceed(10, 10)
+	err = db.Model(&User{Id: 1}).Association("Languages").Delete(languages).Error
+
+	t.Log(expect.AssertExpectations())
 }
 
 func TestAssociationModeClear(t *testing.T) {

@@ -38,8 +38,9 @@ func NewDefaultExpecter() (*gorm.DB, *Expecter, error) {
 	gormNoop.Callback().Create().After("gorm:create").Register("gorm_expect:record_exec", recordExecCallback)
 	gormNoop.Callback().Query().Before("gorm:preload").Register("gorm_expect:record_preload", recordPreloadCallback)
 	gormNoop.Callback().Query().After("gorm:query").Register("gorm_expect:record_query", recordQueryCallback)
-	gormNoop.Callback().RowQuery().After("gorm:row_query").Register("gorm_expect:record_query", recordQueryCallback)
-	gormNoop.Callback().Update().After("gorm:update").Register("gorm_expect:record_exec", recordExecCallback)
+	gormNoop.Callback().RowQuery().After("gorm:row_query").Register("gorm_expect:record_row_query", recordQueryCallback)
+	gormNoop.Callback().Update().After("gorm:update").Register("gorm_expect:record_update", recordExecCallback)
+	gormNoop.Callback().Delete().After("gorm:delete").Register("gorm_expect:record_delete", recordExecCallback)
 
 	return gormMock, &Expecter{
 		adapter:  adapter,
