@@ -117,6 +117,7 @@ func (h *Expecter) Create(model interface{}) ExecExpectation {
 func (h *Expecter) Limit(limit int) *Expecter {
 	clone := h.clone()
 	clone.gorm = clone.gorm.Limit(limit)
+
 	return clone
 }
 
@@ -124,6 +125,7 @@ func (h *Expecter) Limit(limit int) *Expecter {
 func (h *Expecter) Offset(offset int) *Expecter {
 	clone := h.clone()
 	clone.gorm = clone.gorm.Offset(offset)
+
 	return clone
 }
 
@@ -279,6 +281,7 @@ func (h *Expecter) clone() *Expecter {
 		adapter:  h.adapter,
 		callmap:  make(map[string][]interface{}),
 		gorm:     h.gorm,
+		noop:     h.noop,
 		recorder: h.recorder,
 	}
 }
@@ -289,6 +292,7 @@ func (h *Expecter) new() *Expecter {
 		adapter:  h.adapter,
 		callmap:  make(map[string][]interface{}),
 		gorm:     h.gorm,
+		noop:     h.noop,
 		recorder: &Recorder{},
 	}
 }

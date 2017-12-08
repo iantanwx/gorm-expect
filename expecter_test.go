@@ -180,6 +180,22 @@ func TestFindSlice(t *testing.T) {
 	assert.Equal(t, out, in)
 }
 
+func TestOffsetLimit(t *testing.T) {
+	db, expect, err := expecter.NewDefaultExpecter()
+	defer db.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	users := []User{}
+
+	expect.Limit(10).Offset(1).Find(&users).Returns(nil)
+	db.Limit(10).Offset(1).Find(&users)
+
+	assert.Nil(t, expect.AssertExpectations())
+}
+
 func TestNot(t *testing.T) {
 	db, expect, err := expecter.NewDefaultExpecter()
 	defer db.Close()
