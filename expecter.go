@@ -35,15 +35,11 @@ func NewDefaultExpecter() (*gorm.DB, *Expecter, error) {
 	gormNoop, _ := gorm.Open("sqlmock", noop)
 	gormNoop = gormNoop.Set("gorm:recorder", recorder)
 
-	gormNoop.Callback().Create().Before("gorm:before_create").Register("gorm_expect:skip_remaining", skipRemainingCallback)
 	gormNoop.Callback().Create().After("gorm:create").Register("gorm_expect:record_exec", recordExecCallback)
-	gormNoop.Callback().Query().Before("gorm:query").Register("gorm_expect:skip_remaining", skipRemainingCallback)
 	gormNoop.Callback().Query().After("gorm:query").Register("gorm_expect:record_query", recordQueryCallback)
 	gormNoop.Callback().Query().Before("gorm:preload").Register("gorm_expect:record_preload", recordPreloadCallback)
 	gormNoop.Callback().RowQuery().After("gorm:row_query").Register("gorm_expect:record_row_query", recordQueryCallback)
-	gormNoop.Callback().Update().Before("gorm:before_update").Register("gorm_expect:skip_remaining", skipRemainingCallback)
 	gormNoop.Callback().Update().After("gorm:update").Register("gorm_expect:record_update", recordExecCallback)
-	gormNoop.Callback().Delete().Before("gorm:before_delete").Register("gorm_expect:skip_remaining", skipRemainingCallback)
 	gormNoop.Callback().Delete().After("gorm:delete").Register("gorm_expect:record_delete", recordExecCallback)
 
 	return gormMock, &Expecter{
@@ -76,9 +72,21 @@ func (h *Expecter) Debug() *Expecter {
 }
 
 // Skip causes callbacks to be skipped
-func (h *Expecter) Skip() *Expecter {
+func (h *Expecter) Skip(hook string, callbackName string) *Expecter {
 	clone := h.clone()
-	clone.gorm = clone.gorm.Set("gorm_expect:skip_remaining", true)
+
+	switch hook {
+	case "Create":
+		clone.gorm.Callback().Create().Remove(callbackName)
+	case "Query":
+		clone.gorm.Callback().Query().Remove(callbackName)
+	case "Update":
+		clone.gorm.Callback().Update().Remove(callbackName)
+	case "Delete":
+		clone.gorm.Callback().Delete().Remove(callbackName)
+	default:
+		panic("hook can only be Create, QUery, Update or Delete")
+	}
 
 	return clone
 }

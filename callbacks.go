@@ -57,14 +57,6 @@ type Stmt struct {
 	args    []interface{}
 }
 
-func skipRemainingCallback(scope *gorm.Scope) {
-	if shouldSkip, ok := scope.Get("gorm_expect:skip_remaining"); ok {
-		if shouldSkip, ok := shouldSkip.(bool); shouldSkip && ok {
-			scope.SkipLeft()
-		}
-	}
-}
-
 func recordExecCallback(scope *gorm.Scope) {
 	r, ok := scope.Get("gorm:recorder")
 	recorder := r.(*Recorder)

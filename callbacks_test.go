@@ -31,7 +31,7 @@ func TestSkipCallbacks(t *testing.T) {
 	model := TestCallbackModel{}
 	model.ID = 1
 
-	expect.Skip().Delete(&model).WillSucceed(1, 1)
+	expect.Skip("Delete", "gorm:before_delete").Delete(&model).WillSucceed(1, 1)
 	db.Delete(&model)
 
 	assert.Equal(t, 1, isCalled)
